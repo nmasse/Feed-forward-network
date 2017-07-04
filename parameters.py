@@ -10,12 +10,29 @@ Independent parameters
 """
 par = {
     # Setup parameters
-    'save_dir'              : './savedir/',
+    'save_dir'              : './save_dir/',
+    'data_dir'              : './data_dir/',
+    'data_filenames'        : ['data_even.mat', 'data_odd.mat'],
     'debug_model'           : False,
     'load_previous_model'   : False,
+    'ckpt_load_fn'          : 'model.ckpt',
+    'ckpt_save_fn'          : 'model.ckpt',
 
     # Network configuration
-    'layer_dimensions'      : [79,200,150,100,50,1], # Full is 'std_stf'
-    'nonlinearity'          : 'sigmoid',       # Literature 0.8, for EI off 1
-
+    'layer_dims'            : [79,200,150,100,50,2],
+    'nonlinearity'          : 'sigmoid',
+    'learning_rate'         : 1e-3,
+    'num_iterations'        : 1000,
+    'batch_size'            : 250,
+    'hist_size'             : 10
     }
+
+def update_dependencies():
+    """
+    Updates all parameter dependencies
+    """
+    par['num_layers'] = len(par['layer_dims'])
+
+update_dependencies()
+
+print("--> Parameters successfully loaded.\n")
