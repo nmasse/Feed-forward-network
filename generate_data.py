@@ -38,33 +38,41 @@ class Data:
 
 
 
-    def generate_batch_data(self):
+    def generate_batch_data(self, test_data = False):
 
-        # randomly select batch_size entries
-        x = np.zeros((par['batch_size'], (self.num_vars+1)*par['hist_size']-1), dtype = np.float32)
+        # if we're testing data, will generate multiple reps for every entry
+        if test_data:
+            num_reps = par['test_reps']
+        else:
+            num_reps = 1
+
+        x = np.zeros((num_reps, par['batch_size'], (self.num_vars+1)*par['hist_size']-1), dtype = np.float32)
         y = np.zeros((par['batch_size'], 2), dtype = np.float32)
 
-
         for i in range(par['batch_size']):
+            # randomly select batch_size entries
             ind = self.valid_last_data_pts[np.random.randint(self.num_valid_last_data_pts)]
+            y[i,:] = self.future_max_vert[:,ind]
             ind_range = range(self.wheel_index_range[0,ind], self.wheel_index_range[1,ind])
             ind_preceeding = self.wheel_index_range[0,ind] + np.where(self.ID_count[0,ind_range] < self.ID_count[0,ind])[0]
-            ind_hist = np.random.permutation(len(ind_preceeding))
-            ind_hist = ind_preceeding[ind_hist[:par['hist_size']-1]]
-            ind_hist = np.sort(ind_hist)
 
-            y[i,:] = self.future_max_vert[:,ind]
-            u = range(self.num_vars)
-            x[i,u] = self.input_data[:, ind]
-            for j in range(par['hist_size']-1):
-                # wheel variables
-                u = range(self.num_vars*(j+1),self.num_vars*(j+2))
-                x[i,u] = self.input_data[:, ind_hist[j]]
+            for r in range(num_reps):
 
-                # days since prev entry
-                u = self.num_vars*par['hist_size']+j
-                x[i,u] = self.days_since_prev_entry[0,ind_hist[j]]
+                ind_hist = np.random.permutation(len(ind_preceeding))
+                ind_hist = ind_preceeding[ind_hist[:par['hist_size']-1]]
+                ind_hist = np.sort(ind_hist)
+
+                u = range(self.num_vars)
+                x[r,i,u] = self.input_data[:, ind]
+                for j in range(par['hist_size']-1):
+                    # wheel variables
+                    u = range(self.num_vars*(j+1),self.num_vars*(j+2))
+                    x[r,i,u] = self.input_data[:, ind_hist[j]]
+
+                    # days since prev entry
+                    u = self.num_vars*par['hist_size']+j
+                    x[r,i,u] = self.days_since_prev_entry[0,ind_hist[j]]
 
         #plt.imshow(x, aspect='auto', interpolation = 'none')
         #plt.show()
-        return x, y
+        return np.squeeze(x), y
