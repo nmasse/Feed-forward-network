@@ -23,6 +23,7 @@ par = {
     'nonlinearity'          : 'sigmoid',
     'learning_rate'         : 1e-3,
     'num_iterations'        : 1000,
+    'iters_between_eval'    : 10,
     'batch_size'            : 250,
     'hist_size'             : 10
     }
