@@ -22,10 +22,13 @@ par = {
     'layer_dims'            : [79,200,150,100,50,2],
     'nonlinearity'          : 'sigmoid',
     'learning_rate'         : 1e-3,
-    'num_iterations'        : 1000,
+    'num_iterations'        : 10000,
     'iters_between_eval'    : 10,
     'batch_size'            : 250,
-    'hist_size'             : 10
+    'hist_size'             : 10,
+
+    # Dropout
+    'keep_prob'             : 0.9
     }
 
 def update_dependencies():
