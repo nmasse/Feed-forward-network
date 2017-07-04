@@ -82,31 +82,45 @@ def main():
             print('Model ' +  par['ckpt_load_fn'] + ' restored.')
 
         # keep track of the model performance across training
-        model_performance = {'train_loss': [], 'test_loss': [],'trial': [], 'time': []}
+        train_performance = {'loss': [], 'trial': [], 'time': []}
+        test_performance = {'loss': [], 'trial': [], 'time': []}
 
         for i in range(par['num_iterations']):
 
             # generate batch of N (batch_size X num_batches) trials
-            input_data, target_data = train_data.generate_batch_data()
-            test_input_data, test_target_data = train_data.generate_batch_data()
+            input_data, target_data = train_data.generate_batch_data(test_data = False)
+            test_input_data, test_target_data = train_data.generate_batch_data(test_data = True)
+            test_output = np.zeros((par['test_reps'], par['layer_dims'][-1], par['batch_size']), dtype = np.float32)
 
             if par['learning_rate']>0:
                 _, train_loss, model_output = sess.run([model.minimize, model.loss, model.y_hat], {x: input_data.T, y: target_data.T, keep_prob: par['keep_prob']})
-                test_loss = sess.run(model.loss, {x: test_input_data.T, y: test_target_data.T, keep_prob: np.float32(1)})
+                if (i+1)%par['iters_between_eval']==0:
+                    for j in range(par['test_reps']):
+                        test_output[j,:,:] = sess.run(model.y_hat, {x: test_input_data[j,:,:].T, y: test_target_data.T, keep_prob: np.float32(1)})
+                    test_output = np.mean(test_output, axis=0)
+                    test_loss = np.mean((test_output-test_target_data.T)**2)
             else:
                 loss, model_output = sess.run([model.loss, model.y_hat], {x: input_data, y: target_data[:,0]})
 
-            model_performance['train_loss'].append(train_loss)
-            model_performance['test_loss'].append(test_loss)
-            model_performance['trial'].append(i*par['batch_size'])
-            model_performance['time'].append(time.time()-t_start)
+            train_performance = append_data(train_performance, train_loss, time, i, t_start)
 
             if (i+1)%par['iters_between_eval']==0:
-                print_results(model_performance)
+                test_performance = append_data(test_performance, test_loss, time, i, t_start)
+                print_results(train_performance, test_performance)
 
-def print_results(model_performance):
 
-    print('Trial {:7d}'.format(model_performance['trial'][-1]) +
-      ' | Time {:0.2f} s'.format(model_performance['time'][-1]) +
-      ' | Train loss {:0.4f}'.format(np.mean(np.mean(model_performance['train_loss'][-par['iters_between_eval']:]))) +
-      ' | Test loss {:0.4f}'.format(np.mean(model_performance['test_loss'][-par['iters_between_eval']:])))
+def print_results(train_performance, test_performance):
+
+    print('Trial {:7d}'.format(train_performance['trial'][-1]) +
+      ' | Time {:0.2f} s'.format(train_performance['time'][-1]) +
+      ' | Train loss {:0.4f}'.format(np.mean(train_performance['loss'][-par['iters_between_eval']:])) +
+      ' | Test loss {:0.4f}'.format(test_performance['loss'][-1]))
+
+
+def append_data(d, loss, time, i, t_start):
+
+    d['loss'].append(loss)
+    d['trial'].append(i*par['batch_size'])
+    d['time'].append(time.time()-t_start)
+
+    return d
