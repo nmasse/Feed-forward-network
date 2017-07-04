@@ -56,7 +56,8 @@ def main():
     """
     Create the stimulus class to generate trial paramaters and input activity
     """
-    data = generate_data.Data(par['data_dir'] + par['data_filenames'][0])
+    train_data = generate_data.Data(par['data_dir'] + par['data_filenames'][0])
+    test_data = generate_data.Data(par['data_dir'] + par['data_filenames'][1])
 
     x = tf.placeholder(tf.float32, shape=[par['layer_dims'][0], par['batch_size']])  # input data
     y = tf.placeholder(tf.float32, shape=[par['layer_dims'][-1], par['batch_size']]) # target data
@@ -75,26 +76,31 @@ def main():
             print('Model ' +  par['ckpt_load_fn'] + ' restored.')
 
         # keep track of the model performance across training
-        model_performance = {'loss': [], 'trial': [], 'time': []}
+        model_performance = {'train_loss': [], 'test_loss': [],'trial': [], 'time': []}
 
         for i in range(par['num_iterations']):
 
             # generate batch of N (batch_size X num_batches) trials
-            input_data, target_data = data.generate_batch_data()
+            input_data, target_data = train_data.generate_batch_data()
+            test_input_data, test_target_data = train_data.generate_batch_data()
 
             if par['learning_rate']>0:
-                _, loss, model_output = sess.run([model.minimize, model.loss, model.x], {x: input_data.T, y: target_data.T})
+                _, train_loss, model_output = sess.run([model.minimize, model.loss, model.x], {x: input_data.T, y: target_data.T})
+                test_loss = sess.run(model.loss, {x: test_input_data.T, y: test_target_data.T})
             else:
                 loss, model_output = sess.run([model.loss, model.x], {x: input_data, y: target_data[:,0]})
 
-            model_performance['loss'].append(loss)
+            model_performance['train_loss'].append(train_loss)
+            model_performance['test_loss'].append(test_loss)
             model_performance['trial'].append(i*par['batch_size'])
             model_performance['time'].append(time.time()-t_start)
-            if i%10==0:
+
+            if (i+1)%par['iters_between_eval']==0:
                 print_results(model_performance)
 
 def print_results(model_performance):
 
     print('Trial {:7d}'.format(model_performance['trial'][-1]) +
       ' | Time {:0.2f} s'.format(model_performance['time'][-1]) +
-      ' | Loss {:0.4f}'.format(model_performance['loss'][-1]))
+      ' | Train loss {:0.4f}'.format(np.mean(np.mean(model_performance['train_loss'][-par['iters_between_eval']:]))) +
+      ' | Test loss {:0.4f}'.format(np.mean(model_performance['test_loss'][-par['iters_between_eval']:])))
