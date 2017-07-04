@@ -18,11 +18,12 @@ Model setup and execution
 
 class Model:
 
-    def __init__(self, input_data, target_data):
+    def __init__(self, input_data, target_data, keep_prob):
 
         # Load the input activity, the target data, and the training mask for this batch of trials
         self.input_data = input_data
         self.target_data = target_data
+        self.keep_prob = keep_prob # used for dropout
 
         # Build the TensorFlow graph
         self.run_model()
@@ -40,14 +41,18 @@ class Model:
                 b = tf.get_variable('b', (par['layer_dims'][n+1], 1), initializer=tf.constant_initializer(0))
                 if n == par['num_layers']-2:
                     # use linear activation function for last layer
-                    self.x = tf.matmul(W, self.x) + b
+                    self.y_hat = tf.matmul(W, self.x_drop) + b
                 else:
                     # use sigmoid activation function for all other layers
                     self.x = tf.sigmoid(tf.matmul(W, self.x) + b)
+                if n == par['num_layers']-3:
+                    # apply dropout right before final layer
+                    self.x_drop = tf.nn.dropout(self.x, self.keep_prob)
+
 
     def optimize(self):
 
-        self.loss = tf.reduce_mean(tf.square(self.target_data - self.x))
+        self.loss = tf.reduce_mean(tf.square(self.target_data - self.y_hat))
         opt = tf.train.AdamOptimizer(learning_rate = par['learning_rate'])
         self.minimize = opt.minimize(self.loss)
 
@@ -61,10 +66,11 @@ def main():
 
     x = tf.placeholder(tf.float32, shape=[par['layer_dims'][0], par['batch_size']])  # input data
     y = tf.placeholder(tf.float32, shape=[par['layer_dims'][-1], par['batch_size']]) # target data
+    keep_prob = tf.placeholder(tf.float32) # used for dropout
 
     with tf.Session() as sess:
 
-        model = Model(x, y)
+        model = Model(x, y, keep_prob)
         init = tf.global_variables_initializer()
         sess.run(init)
         t_start = time.time()
@@ -85,10 +91,10 @@ def main():
             test_input_data, test_target_data = train_data.generate_batch_data()
 
             if par['learning_rate']>0:
-                _, train_loss, model_output = sess.run([model.minimize, model.loss, model.x], {x: input_data.T, y: target_data.T})
-                test_loss = sess.run(model.loss, {x: test_input_data.T, y: test_target_data.T})
+                _, train_loss, model_output = sess.run([model.minimize, model.loss, model.y_hat], {x: input_data.T, y: target_data.T, keep_prob: par['keep_prob']})
+                test_loss = sess.run(model.loss, {x: test_input_data.T, y: test_target_data.T, keep_prob: np.float32(1)})
             else:
-                loss, model_output = sess.run([model.loss, model.x], {x: input_data, y: target_data[:,0]})
+                loss, model_output = sess.run([model.loss, model.y_hat], {x: input_data, y: target_data[:,0]})
 
             model_performance['train_loss'].append(train_loss)
             model_performance['test_loss'].append(test_loss)
