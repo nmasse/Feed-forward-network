@@ -18,11 +18,12 @@ Model setup and execution
 
 class Model:
 
-    def __init__(self, input_data, target_data, keep_prob):
+    def __init__(self, input_data, target_data, dendrite_clamp, keep_prob):
 
         # Load the input activity, the target data, and the training mask for this batch of trials
         self.input_data = input_data
         self.target_data = target_data
+        self.dendrite_clamp = dendrite_clamp
         self.keep_prob = keep_prob # used for dropout
 
         # Build the TensorFlow graph
@@ -34,25 +35,38 @@ class Model:
     def run_model(self):
 
         self.x = self.input_data
-        for n in range(par['num_layers']-1):
+        for n in range(par['n_hidden_layers']):
             scope_name = 'layer' + str(n)
             with tf.variable_scope(scope_name):
-                W = tf.get_variable('W', (par['layer_dims'][n+1], par['layer_dims'][n]), initializer=tf.random_normal_initializer(0, par['init_weight_sd']))
+                W = tf.get_variable('W', (par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']), \
+                    initializer=tf.random_normal_initializer(0, par['init_weight_sd']))
                 b = tf.get_variable('b', (par['layer_dims'][n+1], 1), initializer=tf.constant_initializer(0))
-                if n == par['num_layers']-2:
-                    # use linear activation function for last layer
-                    self.y_hat = tf.matmul(W, self.x) + b
-                else:
-                    # use sigmoid activation function for all other layers
-                    self.x = tf.nn.relu(tf.matmul(W, self.x) + b)
-                if n == par['num_layers']-3:
+
+                print('Layer ', n)
+                print(self.x)
+                print(W)
+                x0 = tf.tensordot(W, self.x, ([1],[0]))
+                print(x0)
+                #x1 = tf.nn.relu(x0 - self.dendrite_clamp)
+                x1 = tf.nn.relu(x0)
+                print(x1)
+                self.x = tf.reduce_sum(x1,axis = 1) + b
+                print(self.x)
+                if n == par['n_hidden_layers']:
                     # apply dropout right before final layer
                     self.x = tf.nn.dropout(self.x, self.keep_prob)
+
+        with tf.variable_scope('output'):
+            W = tf.get_variable('W', (par['layer_dims'][par['n_hidden_layers']+1], par['layer_dims'][par['n_hidden_layers']]), \
+                initializer=tf.random_normal_initializer(0, par['init_weight_sd']))
+            b = tf.get_variable('b', (par['layer_dims'][par['n_hidden_layers']+1], 1), initializer=tf.constant_initializer(0))
+
+            self.y = tf.matmul(W, self.x) + b
 
 
     def optimize(self):
 
-        self.loss = tf.reduce_mean(tf.square(self.target_data - self.y_hat))
+        self.loss = tf.reduce_mean(tf.square(self.target_data - self.y))
         opt = tf.train.AdamOptimizer(learning_rate = par['learning_rate'])
         self.minimize = opt.minimize(self.loss)
 
@@ -61,19 +75,20 @@ def main():
     """
     Create the stimulus class to generate trial paramaters and input activity
     """
-    train_data = generate_data.Data(par['data_dir'] + par['data_filenames'][0])
-    test_data = generate_data.Data(par['data_dir'] + par['data_filenames'][1])
+    stim = generate_data.Data()
 
     x = tf.placeholder(tf.float32, shape=[par['layer_dims'][0], par['batch_size']])  # input data
     y = tf.placeholder(tf.float32, shape=[par['layer_dims'][-1], par['batch_size']]) # target data
+    dendrite_clamp = []
     keep_prob = tf.placeholder(tf.float32) # used for dropout
 
     with tf.Session() as sess:
 
-        model = Model(x, y, keep_prob)
+        model = Model(x, y, dendrite_clamp, keep_prob)
         init = tf.global_variables_initializer()
         sess.run(init)
         t_start = time.time()
+        print('Graph created...')
 
         saver = tf.train.Saver()
         # Restore variables from previous model if desired
@@ -88,14 +103,15 @@ def main():
         for i in range(par['num_iterations']):
 
             # generate batch of N (batch_size X num_batches) trials
-            input_data, target_data = train_data.generate_batch_data(test_data = False)
+            input_data, target_data = stim.generate_batch_data(perm_ind = 0, test_data = False)
 
             if par['learning_rate']>0:
 
                 """
                 Train the model
                 """
-                _, train_loss, model_output = sess.run([model.minimize, model.loss, model.y_hat], {x: input_data.T, y: target_data.T, keep_prob: par['keep_prob']})
+                _, train_loss, model_output = sess.run([model.minimize, model.loss, model.y], \
+                    {x: input_data, y: target_data, keep_prob: par['keep_prob']})
 
                 """
                 Test model on cross-validated data every 'iters_between_eval' trials
@@ -103,7 +119,7 @@ def main():
                 if (i+1)%par['iters_between_eval']==0:
                     test_loss = np.zeros((10))
                     for r in range(10):
-                        test_input_data, test_target_data = train_data.generate_batch_data(test_data = True)
+                        test_input_data, test_target_data = stim.generate_batch_data(test_data = True)
                         test_output = np.zeros((par['test_reps'], par['layer_dims'][-1], par['batch_size']), dtype = np.float32)
                         for j in range(par['test_reps']):
                             test_output[j,:,:] = sess.run(model.y_hat, {x: test_input_data[j,:,:].T, y: test_target_data.T, keep_prob: np.float32(1)})
@@ -131,7 +147,6 @@ def print_results(train_performance, test_performance):
       ' | Train loss {:0.4f}'.format(np.mean(train_performance['loss'][-par['iters_between_eval']:])) +
       ' | Test loss {:0.4f}'.format(test_performance['loss'][-1]))
 
-
 def append_data(d, loss, time, i, t_start):
 
     d['loss'].append(loss)
@@ -139,3 +154,6 @@ def append_data(d, loss, time, i, t_start):
     d['time'].append(time.time()-t_start)
 
     return d
+
+
+main()

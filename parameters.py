@@ -19,13 +19,16 @@ par = {
     'ckpt_save_fn'          : 'model.ckpt',
 
     # Network configuration
-    'layer_dims'            : [9*12-2,120,100,80,50,30,1],
+    'n_dendrites'           : 5,
     'init_weight_sd'        : 0.05,
-    'nonlinearity'          : 'sigmoid',
     'learning_rate'         : 1e-3,
     'num_iterations'        : 100000,
     'iters_between_eval'    : 250,
-    'batch_size'            : 100,
+    'batch_size'            : 128,
+    'n_perms'               : 100,
+    'n_pixels'              : 28**2,
+    'layer_dims'            : [28**2,120,120,120,120,10],
+    'n_hidden_layers'       : 4,
     'hist_size'             : 12,
     'test_reps'             : 50,
 
