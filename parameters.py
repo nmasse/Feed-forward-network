@@ -31,7 +31,7 @@ par = {
     'test_reps'             : 50,
 
     # Omega parameters
-    'xi'                    : 0.001
+    'xi'                    : 0.001,
 
     # Dropout
     'keep_prob'             : 1
