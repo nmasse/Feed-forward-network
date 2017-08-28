@@ -30,6 +30,9 @@ par = {
     'layer_dims'            : [784,120,120,120,120,10],
     'test_reps'             : 50,
 
+    # Omega parameters
+    'xi'                    : 0.001
+
     # Dropout
     'keep_prob'             : 1
     }
