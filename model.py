@@ -120,14 +120,22 @@ def main():
         test_performance = {'loss': [], 'trial': [], 'time': []}
 
         perm_ind = 0
+        prev_var = [0]*(2*par['num_layers'])
+        w_k = [[0]*(2*par['num_layers'])]*par['n_perms']
+
         for i in range(par['num_iterations']):
 
             # Generate batch of N (batch_size X num_batches) trials
             input_data, target_data = stim.generate_batch_data(perm_ind=perm_ind, test_data=False)
 
             # Train the model
-            _, train_loss, model_output = sess.run([model.train_op, model.loss, model.y], \
+            _, grads_and_vars, train_loss, model_output = sess.run([model.train_op, model.grads_and_vars, model.loss, model.y], \
                 {x: input_data, y: target_data, keep_prob: par['keep_prob']})
+
+            # Accumulate omega values
+            for k, (grad, var) in enumerate(grads_and_vars):
+                w_k[perm_ind][k] += np.multiply((prev_var[k]-var), grad)
+                prev_var[k] = var
 
             # Append performance data
             train_performance = append_data(train_performance, train_loss, time, i, t_start)
@@ -171,10 +179,12 @@ def print_results(i, acc, loss, t_start, perm_ind):
     print('\n   P | Acc.    | Loss')
     print('------------------------')
     for n in range(np.shape(acc)[0]):
+        line = '{:4d} | '.format(n) + '{:0.4f}  | '.format(acc[n]) + '{:0.4f}'.format(loss[n])
         if n == perm_ind:
-            print('{:4d} | '.format(n) + '{:0.4f}  | '.format(acc[n]) + '{:0.4f}'.format(loss[n]) + ' <--')
+            print(line + ' <--')
         else:
-            print('{:4d} | '.format(n) + '{:0.4f}  | '.format(acc[n]) + '{:0.4f}'.format(loss[n]))
+            print(line)
+
 
 def append_data(d, loss, time, i, t_start):
 
@@ -184,9 +194,11 @@ def append_data(d, loss, time, i, t_start):
 
     return d
 
+
 def tf_var_print(*var):
     for v in var:
         print(str(v.name).ljust(20), v.shape)
+
 
 try:
     main()
