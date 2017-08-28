@@ -186,15 +186,6 @@ def print_results(i, acc, loss, t_start, perm_ind):
             print(line)
 
 
-def append_data(d, loss, time, i, t_start):
-
-    d['loss'].append(loss)
-    d['trial'].append(i*par['batch_size'])
-    d['time'].append(time.time()-t_start)
-
-    return d
-
-
 def tf_var_print(*var):
     for v in var:
         print(str(v.name).ljust(20), v.shape)
