@@ -23,13 +23,11 @@ par = {
     'init_weight_sd'        : 0.05,
     'learning_rate'         : 1e-3,
     'num_iterations'        : 100000,
-    'iters_between_eval'    : 250,
-    'batch_size'            : 500,
-    'n_perms'               : 100,
+    'iters_between_eval'    : 10,
+    'batch_size'            : 1000,
+    'n_perms'               : 10,
     'n_pixels'              : 784,
     'layer_dims'            : [784,120,120,120,120,10],
-    'n_hidden_layers'       : 4,
-    'hist_size'             : 12,
     'test_reps'             : 50,
 
     # Dropout
@@ -41,6 +39,7 @@ def update_dependencies():
     Updates all parameter dependencies
     """
     par['num_layers'] = len(par['layer_dims'])
+    par['n_hidden_layers'] = par['num_layers'] - 2
 
 update_dependencies()
 

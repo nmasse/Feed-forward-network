@@ -24,8 +24,8 @@ class Data:
     def generate_batch_data(self, perm_ind=0, test_data=False):
 
         # Allocate x and y arrays
-        x = np.zeros((par['n_pixels'], par['batch_size']), dtype = np.float32)
-        y = np.zeros((10, par['batch_size']), dtype = np.float32)
+        x = np.zeros((par['n_pixels'], par['batch_size']), dtype=np.float32)
+        y = np.zeros((par['layer_dims'][-1], par['batch_size']), dtype=np.float32)
 
         # Generate appropriate indices for batch data
         if test_data:

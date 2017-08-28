@@ -118,10 +118,10 @@ def main():
         train_performance = {'loss': [], 'trial': [], 'time': []}
         test_performance = {'loss': [], 'trial': [], 'time': []}
 
+        perm_ind = 0
         for i in range(par['num_iterations']):
 
             # Generate batch of N (batch_size X num_batches) trials
-            perm_ind = (i//250)%par['n_perms']
             input_data, target_data = stim.generate_batch_data(perm_ind=perm_ind, test_data=False)
 
             # Train the model
@@ -132,40 +132,48 @@ def main():
             train_performance = append_data(train_performance, train_loss, time, i, t_start)
 
             # Test model on cross-validated data every 'iters_between_eval' trials
-            if (i+1)%par['iters_between_eval']==0:
-                test_loss = np.zeros((10))
-                for r in range(10):
-                    # Generate batch of trials
-                    test_input_data, test_target_data = stim.generate_batch_data(test_data=True)
-                    test_output = np.zeros((par['test_reps'], par['layer_dims'][-1], par['batch_size']), dtype=np.float32)
+            if i%par['iters_between_eval']==0 and i != 0:
 
-                    # Test the model
+                # Allocate test output data
+                test_input  = np.zeros((par['n_perms'], par['n_pixels'], par['batch_size']), dtype=np.float32)
+                test_target = np.zeros((par['n_perms'], par['layer_dims'][-1], par['batch_size']), dtype=np.float32)
+                test_output = np.zeros((par['n_perms'], par['test_reps'], par['layer_dims'][-1], par['batch_size']), dtype=np.float32)
+
+                # Loop over all available permutations and test the model on each
+                for p in range(par['n_perms']):
+                    test_input[p,:,:], test_target[p,:,:] = stim.generate_batch_data(perm_ind=p, test_data=True)
+                    feed_dict = {x: test_input[p,:,:], y: test_target[p,:,:], keep_prob: np.float32(1)}
                     for j in range(par['test_reps']):
-                        test_output[j,:,:] = sess.run(model.y, {x: test_input_data[:,:], y: test_target_data, keep_prob: np.float32(1)})
+                        test_output[p,j,:,:] = sess.run(model.y, feed_dict)
 
-                    # Average across test reps. and calculate MSE loss
-                    test_output = np.mean(test_output, axis=0)
-                    test_loss[r] = np.mean((test_output-test_target_data)**2)
+                # Average over test repetitions
+                test_output  = np.mean(test_output, axis=1)
 
-                # Append performance data
-                test_performance = append_data(test_performance, np.mean(test_loss), time, i, t_start)
+                # Find accuracy and loss for each permutation
+                acc_by_perm  = np.sum(np.float32(np.argmax(test_output, axis=1)==np.argmax(test_target, axis=1)), axis=1)/par['batch_size']
+                loss_by_perm = np.mean((test_output - test_target)**2, axis=(1,2))
+
+                # Print results for this test set
+                print_results(i, acc_by_perm, loss_by_perm, t_start, perm_ind)
+
+            # Update the permutation index
+            perm_ind = (i//(2*par['iters_between_eval']))%par['n_perms']
 
             # Reduce learning rate if train loss below thresholds
             if train_loss<60:
                 par['learning_rate'] = 2e-4
 
-            # Print results and associated data
-            if i%par['iters_between_eval']==0 and i != 0:
-                print_results(train_performance, test_performance, perm_ind)
 
+def print_results(i, acc, loss, t_start, perm_ind):
 
-def print_results(train_performance, test_performance, perm_ind):
-
-    print('Trial {:7d}'.format(train_performance['trial'][-1]) +
-      ' | Perm. {:2d}'.format(perm_ind) +
-      ' | Time {:6.2f} s'.format(train_performance['time'][-1]) +
-      ' | Train loss {:0.4f}'.format(np.mean(train_performance['loss'][-par['iters_between_eval']:])) +
-      ' | Test loss {:0.4f}'.format(test_performance['loss'][-1]))
+    print('\n\nTrial {:8d}'.format(i*par['batch_size']) + ' | Time {:6.2f} s'.format(time.time() - t_start))
+    print('\n   P | Acc.    | Loss')
+    print('------------------------')
+    for n in range(np.shape(acc)[0]):
+        if n == perm_ind:
+            print('{:4d} | '.format(n) + '{:0.4f}  | '.format(acc[n]) + '{:0.4f}'.format(loss[n]) + ' <--')
+        else:
+            print('{:4d} | '.format(n) + '{:0.4f}  | '.format(acc[n]) + '{:0.4f}'.format(loss[n]))
 
 def append_data(d, loss, time, i, t_start):
 
