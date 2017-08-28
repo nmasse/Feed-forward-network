@@ -23,7 +23,7 @@ par = {
     'init_weight_sd'        : 0.05,
     'learning_rate'         : 1e-3,
     'num_iterations'        : 100000,
-    'iters_between_eval'    : 10,
+    'iters_between_eval'    : 20,
     'batch_size'            : 1000,
     'n_perms'               : 10,
     'n_pixels'              : 784,

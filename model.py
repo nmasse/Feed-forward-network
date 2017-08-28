@@ -86,7 +86,8 @@ class Model:
         # Calculate loss and run optimization
         self.loss = tf.reduce_mean(tf.square(self.target_data - self.y))
         opt = tf.train.AdamOptimizer(learning_rate = par['learning_rate'])
-        self.minimize = opt.minimize(self.loss)
+        self.grads_and_vars = opt.compute_gradients(self.loss)
+        self.train_op = opt.apply_gradients(self.grads_and_vars)
 
 
 def main():
@@ -125,7 +126,7 @@ def main():
             input_data, target_data = stim.generate_batch_data(perm_ind=perm_ind, test_data=False)
 
             # Train the model
-            _, train_loss, model_output = sess.run([model.minimize, model.loss, model.y], \
+            _, train_loss, model_output = sess.run([model.train_op, model.loss, model.y], \
                 {x: input_data, y: target_data, keep_prob: par['keep_prob']})
 
             # Append performance data
