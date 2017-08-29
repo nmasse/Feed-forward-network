@@ -19,7 +19,7 @@ par = {
     'ckpt_save_fn'          : 'model.ckpt',
 
     # Network configuration
-    'n_dendrites'           : 5,
+    'n_dendrites'           : 1,
     'init_weight_sd'        : 0.05,
     'learning_rate'         : 1e-3,
     'num_iterations'        : 100000,

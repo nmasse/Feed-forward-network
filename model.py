@@ -9,6 +9,8 @@ import generate_data
 import time
 from parameters import *
 import os
+import itertools
+import omegas as reg
 
 # Ignore startup TensorFlow warnings
 os.environ['TF_CPP_MIN_LOG_LEVEL']='2'
@@ -51,7 +53,8 @@ class Model:
                 # Get layer variables
                 W = tf.get_variable('W', (par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']), \
                     initializer=tf.random_normal_initializer(0, par['init_weight_sd']))
-                b = tf.get_variable('b', (par['layer_dims'][n+1], 1), initializer=tf.constant_initializer(0))
+                #b = tf.get_variable('b', (par['layer_dims'][n+1], 1), initializer=tf.constant_initializer(0))
+                b = tf.constant(0.)
 
                 # Run layer calculations
                 x0 = tf.tensordot(W, self.x, ([1],[0]))
@@ -73,7 +76,8 @@ class Model:
             # Get layer variables
             W = tf.get_variable('W', (par['layer_dims'][par['n_hidden_layers']+1], par['layer_dims'][par['n_hidden_layers']]), \
                 initializer=tf.random_normal_initializer(0, par['init_weight_sd']))
-            b = tf.get_variable('b', (par['layer_dims'][par['n_hidden_layers']+1], 1), initializer=tf.constant_initializer(0))
+            #b = tf.get_variable('b', (par['layer_dims'][par['n_hidden_layers']+1], 1), initializer=tf.constant_initializer(0))
+            b = tf.constant(0.)
 
 
             # Run layer calculation
@@ -119,9 +123,11 @@ def main():
         train_performance = {'loss': [], 'trial': [], 'time': []}
         test_performance = {'loss': [], 'trial': [], 'time': []}
 
-        perm_ind = 0
-        prev_var = [0]*(2*par['num_layers'])
-        w_k = [[0]*(2*par['num_layers'])]*par['n_perms']
+        perm_ind    = 0
+        prev_ind    = 0
+
+        # Generate OmegaLayers
+        omegas = reg.create_omega_layer(np.arange(par['num_layers']-1))
 
         for i in range(par['num_iterations']):
 
@@ -131,14 +137,6 @@ def main():
             # Train the model
             _, grads_and_vars, train_loss, model_output = sess.run([model.train_op, model.grads_and_vars, model.loss, model.y], \
                 {x: input_data, y: target_data, keep_prob: par['keep_prob']})
-
-            # Accumulate omega values
-            for k, (grad, var) in enumerate(grads_and_vars):
-                w_k[perm_ind][k] += np.multiply((prev_var[k]-var), grad)
-                prev_var[k] = var
-
-            # Append performance data
-            train_performance = append_data(train_performance, train_loss, time, i, t_start)
 
             # Test model on cross-validated data every 'iters_between_eval' trials
             if i%par['iters_between_eval']==0 and i != 0:
@@ -165,12 +163,15 @@ def main():
                 # Print results for this test set
                 print_results(i, acc_by_perm, loss_by_perm, t_start, perm_ind)
 
-            # Update the permutation index
+            # Update the permutation index for the next iteration
             perm_ind = (i//(2*par['iters_between_eval']))%par['n_perms']
 
-            # Reduce learning rate if train loss below thresholds
-            if train_loss<60:
-                par['learning_rate'] = 2e-4
+            # If changing tasks, calculate omegas and reset accumulators
+            if perm_ind != prev_ind:
+
+                pass    # Run omega calculation here
+
+            prev_ind = perm_ind
 
 
 def print_results(i, acc, loss, t_start, perm_ind):
@@ -178,12 +179,9 @@ def print_results(i, acc, loss, t_start, perm_ind):
     print('\n\nTrial {:8d}'.format(i*par['batch_size']) + ' | Time {:6.2f} s'.format(time.time() - t_start))
     print('\n   P | Acc.    | Loss')
     print('------------------------')
-    for n in range(np.shape(acc)[0]):
-        line = '{:4d} | '.format(n) + '{:0.4f}  | '.format(acc[n]) + '{:0.4f}'.format(loss[n])
-        if n == perm_ind:
-            print(line + ' <--')
-        else:
-            print(line)
+    for p in range(np.shape(acc)[0]):
+        line = '{:4d} | '.format(p) + '{:0.4f}  | '.format(acc[p]) + '{:0.4f}'.format(loss[p])
+        print(line, '<---' if p == perm_ind else '')
 
 
 def tf_var_print(*var):
