@@ -78,16 +78,22 @@ class OmegaLayer:
     def get_perm(self, pid):
         return self.omegas[pid]
 
+    def get_active_perm(self):
+        return self.get_perm(self.active)
+
+    def update_active_ref(self, ref):
+        self.get_perm(self.active).ref = ref
+
     def get_prev_perm_ref(self, pid):
         prev_pid = (pid-1)%par['n_perms']
         if self.chron == 'prev_only' and prev_pid > pid:
             return 0
         else:
-            return get_perm(prev_pid).ref
+            return self.get_perm(prev_pid).ref
 
     def add_to_w(self, var, grad):
-        active = get_perm(self.active)
-        prev_ref = get_prev_perm_ref(self.active)
+        active = self.get_perm(self.active)
+        prev_ref = self.get_prev_perm_ref(self.active)
 
         active.add_to_w(var, grad)
         active.calc_delta(prev_ref)
@@ -111,15 +117,58 @@ class OmegaLayer:
 
         return self.full_omega
 
+    def process_iteration(self, grads_and_vars):
+        # Note that these grads and vars are for a SINGLE paramter matrix
+        # over the accumulation period, and are NOT the grads and vars for the
+        # whole network graph
+
+        for g, v in grads_and_vars:
+            self.add_to_w(v, g)
+
+        print(np.mean(self.calc_full_omega()))
+
+
+
+
+
 
 @np.vectorize
 def create_omega_layer(l):
     return OmegaLayer(l)
 
+
+print('Layer dims:', par['layer_dims'])
+print('Num. dendrites:', par['n_dendrites'])
+print('Num. permutations:', par['n_perms'], '\n')
+
+
 x = OmegaLayer(0)
-print(x.size, x.active)
+
+print('-->', x.get_active_perm().pid)
+grads_and_vars = [[0.025, 0.001], [0.030, 0.002], [0.035, 0.003]]
+x.process_iteration(grads_and_vars)
+
+x.change_active_pid(1)
+
+print('-->', x.get_active_perm().pid)
+grads_and_vars = [[0.035, 0.001], [0.030, 0.002], [0.0275, 0.003]]
+x.process_iteration(grads_and_vars)
+
 x.change_active_pid(2)
-print(x.size, x.active)
+
+print('-->', x.get_active_perm().pid)
+grads_and_vars = [[0.025, 0.001], [0.020, 0.002], [0.015, 0.003]]
+x.process_iteration(grads_and_vars)
+
+
+
+
+
+
+
+
+
+
 
 
 
