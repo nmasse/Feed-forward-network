@@ -53,8 +53,7 @@ class Model:
                 # Get layer variables
                 W = tf.get_variable('W', (par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']), \
                     initializer=tf.random_normal_initializer(0, par['init_weight_sd']))
-                #b = tf.get_variable('b', (par['layer_dims'][n+1], 1), initializer=tf.constant_initializer(0))
-                b = tf.constant(0.)
+                b = tf.get_variable('b', (par['layer_dims'][n+1], 1), initializer=tf.constant_initializer(0)) if not par['constant_b'] else tf.constant(0.)
 
                 # Run layer calculations
                 x0 = tf.tensordot(W, self.x, ([1],[0]))
@@ -76,9 +75,7 @@ class Model:
             # Get layer variables
             W = tf.get_variable('W', (par['layer_dims'][par['n_hidden_layers']+1], par['layer_dims'][par['n_hidden_layers']]), \
                 initializer=tf.random_normal_initializer(0, par['init_weight_sd']))
-            #b = tf.get_variable('b', (par['layer_dims'][par['n_hidden_layers']+1], 1), initializer=tf.constant_initializer(0))
-            b = tf.constant(0.)
-
+            b = tf.get_variable('b', (par['layer_dims'][par['n_hidden_layers']+1], 1), initializer=tf.constant_initializer(0)) if not par['constant_b'] else tf.constant(0.)
 
             # Run layer calculation
             self.y = tf.matmul(W, self.x) + b
@@ -126,8 +123,10 @@ def main():
         perm_ind    = 0
         prev_ind    = 0
 
-        # Generate OmegaLayers
-        omegas = reg.create_omega_layer(np.arange(par['num_layers']-1))
+        # Generate OmegaLayers and associated items
+        omegas      = reg.create_omega_layer(np.arange(par['num_layers']-1))
+        grad_list   = [[]]*par['num_layers']
+        var_list    = [[]]*par['num_layers']
 
         for i in range(par['num_iterations']):
 
@@ -138,6 +137,19 @@ def main():
             _, grads_and_vars, train_loss, model_output = sess.run([model.train_op, model.grads_and_vars, model.loss, model.y], \
                 {x: input_data, y: target_data, keep_prob: par['keep_prob']})
 
+            # Separate grads and vars for use in omega calculations
+            for k, (g, v) in enumerate(grads_and_vars):
+                if par['constant_b']:
+                    grad_list[k].append(g)
+                    var_list[k].append(v)
+                    print(g.shape, v.shape)
+                elif not par['constant_b'] and k%2 == 0:
+                    grad_list[k//2].append(g)
+                    var_list[k//2].append(v)
+                    print(g.shape, v.shape)
+                else:
+                    pass
+                    
             # Test model on cross-validated data every 'iters_between_eval' trials
             if i%par['iters_between_eval']==0 and i != 0:
 

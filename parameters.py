@@ -29,6 +29,7 @@ par = {
     'n_pixels'              : 784,
     'layer_dims'            : [784,120,120,120,120,10],
     'test_reps'             : 50,
+    'constant_b'            : True,
 
     # Omega parameters
     'xi'                    : 0.001,
