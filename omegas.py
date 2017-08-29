@@ -1,6 +1,41 @@
+"""
+Synaptic Regularization Calculation
+Source: Improved multitask learning through synaptic intelligence (Zenke et al)
+Gregory Grant - Aug. 2017
+"""
+
 import numpy as np
 from parameters import *
 import itertools
+
+"""
+HOW TO USE
+
+lid = layer id
+pid = permutation id
+process_iteration accumulates the grads and vars for that parameter matrix
+    and calculates the full omega value
+change_active_pid changes the permutation id to the indicated index
+change_chron('all') releases the restriction that only previous permutations
+    must be used in calculating omega, and is intended to be used when
+    iterating over each permutation more that once
+
+x = OmegaLayer(0)
+capital_omega_for_perm_0 = x.process_iteration(grads_and_vars)
+x.change_active_pid(1)
+capital_omega_for_perm_1 = x.process_iteration(grads_and_vars)
+...
+capital_omega_for_perm_n = ...
+
+x.change_chron('all')
+
+x.change_active_pid(0)
+capital_omega_for_perm_0 = x.process_iteration(grads_and_vars)
+x.change_active_pid(1)
+capital_omega_for_perm_1 = x.process_iteration(grads_and_vars)
+...
+
+"""
 
 class OmegaObject:
 
@@ -22,26 +57,22 @@ class OmegaObject:
         self.delta  = np.zeros(size)    # Denominator value
         self.omega  = np.zeros(size)    # Large omega value
 
-        self.grad   = np.zeros(size)    # Previous gradient
         self.ref    = np.zeros(size)    # Ideal weight for this permutation
-        self.prev   = np.zeros(size)    # Previous weight reference for w_k
+        self.grad   = np.zeros(size)    # Previous gradient (buffer)
 
-    def set_ref(self, var):
+    def add_to_w(self, grad, var):
+        self.w_k   += np.multiply((self.ref-var), self.grad)
+        self.grad   = grad
         self.ref    = var
 
-    def add_to_w(self, var, grad):
-        self.w_k   += np.multiply((self.prev-var), self.grad)
-        self.grad   = grad
-        self.prev   = var
-
     def reset_w(self):
-        self.w_k    = np.zeros(size)
+        self.w_k    = np.zeros(self.size)
 
     def calc_delta(self, prev_ref):
         self.delta  = self.ref - prev_ref
 
     def calc_omega(self):
-        self.omega  = self.w_k/(self.delta + par['xi'])
+        self.omega  = self.w_k/(self.delta**2 + par['xi'])
 
 
 class OmegaLayer:
@@ -59,7 +90,6 @@ class OmegaLayer:
         self.active = active
 
         self.full_omega = 0
-        self.perms      = np.zeros(self.size)
         self.chron      = 'prev_only'
 
         self.omegas = []
@@ -82,7 +112,7 @@ class OmegaLayer:
         return self.get_perm(self.active)
 
     def update_active_ref(self, ref):
-        self.get_perm(self.active).ref = ref
+        self.get_active_perm.ref = ref
 
     def get_prev_perm_ref(self, pid):
         prev_pid = (pid-1)%par['n_perms']
@@ -91,13 +121,16 @@ class OmegaLayer:
         else:
             return self.get_perm(prev_pid).ref
 
-    def add_to_w(self, var, grad):
-        active = self.get_perm(self.active)
+    def add_to_w(self, grad, var):
+        active = self.get_active_perm()
         prev_ref = self.get_prev_perm_ref(self.active)
 
-        active.add_to_w(var, grad)
+        active.add_to_w(grad, var)
         active.calc_delta(prev_ref)
         active.calc_omega()
+
+    def reset_w(self):
+        self.get_active_perm().reset_w()
 
     def calc_full_omega(self):
         """
@@ -118,64 +151,21 @@ class OmegaLayer:
         return self.full_omega
 
     def process_iteration(self, grads_and_vars):
-        # Note that these grads and vars are for a SINGLE paramter matrix
-        # over the accumulation period, and are NOT the grads and vars for the
-        # whole network graph
+        # Note that these grads and vars are for a SINGLE parameter matrix
+        # taken over the accumulation period, and are NOT the grads and vars
+        # for the whole network graph
 
-        for g, v in grads_and_vars:
-            self.add_to_w(v, g)
+        # Apply all grads and vars to w_k (inc. last grad!)
+        for gv in grads_and_vars:
+            self.add_to_w(*gv)
+        self.add_to_w(grads_and_vars[-1][0], 0.)     # This line is important!
 
-        print(np.mean(self.calc_full_omega()))
+        self.full_omega = self.calc_full_omega()
+        self.reset_w()
 
-
-
-
+        return self.full_omega
 
 
 @np.vectorize
 def create_omega_layer(l):
     return OmegaLayer(l)
-
-
-print('Layer dims:', par['layer_dims'])
-print('Num. dendrites:', par['n_dendrites'])
-print('Num. permutations:', par['n_perms'], '\n')
-
-
-x = OmegaLayer(0)
-
-print('-->', x.get_active_perm().pid)
-grads_and_vars = [[0.025, 0.001], [0.030, 0.002], [0.035, 0.003]]
-x.process_iteration(grads_and_vars)
-
-x.change_active_pid(1)
-
-print('-->', x.get_active_perm().pid)
-grads_and_vars = [[0.035, 0.001], [0.030, 0.002], [0.0275, 0.003]]
-x.process_iteration(grads_and_vars)
-
-x.change_active_pid(2)
-
-print('-->', x.get_active_perm().pid)
-grads_and_vars = [[0.025, 0.001], [0.020, 0.002], [0.015, 0.003]]
-x.process_iteration(grads_and_vars)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-quit()
