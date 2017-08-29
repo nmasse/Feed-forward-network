@@ -117,7 +117,7 @@ class OmegaLayer:
     def get_prev_perm_ref(self, pid):
         prev_pid = (pid-1)%par['n_perms']
         if self.chron == 'prev_only' and prev_pid > pid:
-            return 0
+            return 0                        # TODO : Default may not be zero
         else:
             return self.get_perm(prev_pid).ref
 
