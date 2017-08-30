@@ -280,6 +280,19 @@ def calc_DC(o):
             content[n, d, ind] = 1
         DC.append(content)
 
+    # Version that uses max
+    # DC = []
+    # for layer in range(par['n_hidden_layers']):
+    #     content = np.zeros([par['layer_dims'][layer+1]])
+        
+
+    #     for n, d in itertools.product(range(par['layer_dims'][layer+1]), range(par['n_dendrites'])):
+    #         mean = np.mean(np.max(o[layer][:,n,:,d], axis=0)))
+
+    #         ind = np.argmin(np.mean(o[layer][:,n,:,d], axis=1))
+    #         content[n, d, ind] = 1
+    #     DC.append(content)
+
 
 try:
     main()
