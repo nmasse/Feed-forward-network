@@ -150,6 +150,10 @@ def main():
             _, grads_and_vars, train_loss, model_output = sess.run([model.train_op, model.grads_and_vars, model.loss, model.y], \
                 {x: input_data, y: target_data, keep_prob: par['keep_prob']})
 
+            print(train_loss, '|', list_aspect(grads_and_vars, lambda x : int(np.round(np.sum(1000*x)))))
+            if i == 2:
+                quit()
+
             # Separate grads and vars for use in omega calculations
             for k, (g, v) in enumerate(grads_and_vars):
                 if par['constant_b']:
@@ -191,7 +195,7 @@ def main():
 
             # If changing tasks, calculate omegas and reset accumulators
             if perm_ind != prev_ind:
-                print('\nRunning omega calculation.\n')
+                print('\nRunning omega calculation.')
 
                 # This takes the grads and vars from the grad_list and var_list
                 # format and rearranges them to be pairs of grads and vars as
@@ -199,28 +203,36 @@ def main():
                 # a full grads_and_vars as needed by its appropriate OmegaLayer.
                 gvs = []
                 for l in range(par['num_layers']-1):
-                    gl = [k[l] for k in list_shapes(grad_list)]
-                    vl = [k[l] for k in list_shapes(var_list)]
+                    gl = [k[l] for k in grad_list]
+                    vl = [k[l] for k in var_list]
                     gv = [[g,v] for g, v in zip(gl, vl)]
                     gvs.append(gv)
 
-                for gv in gvs:
-                    print(gv)
+                # The grad and var lists are reset in preparation for the next
+                # sequence of updates
+                grad_list = [[]]*par['num_layers']
+                var_list  = [[]]*par['num_layers']
 
-                quit()
+                # Iterate over the OmegaLayers and the gvs list to process
+                # each layer, get the appropriate reference weights and omega
+                # values, and then change the active permutation
+                w = []
+                o = []
+                for layer, gv in zip(omegas, gvs):
+                    layer.process_iteration(gv)
 
+                    w.append(layer.get_prev_perm_ref(prev_ind))
+                    o.append(layer.calc_full_omega())
 
+                    layer.change_active_pid(perm_ind)
 
-                # Retrieve the appropriate reference weights and omega values
-                # for use in the graph
-                w = [x.get_prev_perm_ref(prev_ind-1) for x in omegas]
-                o = [x.calc_full_omega() for x in omegas]
+                print(list_aspect(w, np.shape))
+                print('')
+                for li in list_aspect(o, np.sum):
+                    print(np.round(li))
 
-                print(list_shapes(w))
-                print(list_shapes(o))
-                quit()
+                print('Omega calculation complete.\n')
 
-                print('\nOmega calculation complete.\n')
 
             prev_ind = perm_ind
 
@@ -244,16 +256,16 @@ def split_list(l):
     return l[:len(l)//2], l[len(l)//2:]
 
 
-def list_shapes(l):
-    # print([np.shape(i) for i in l])
+def list_aspect(l, f):
     r = []
     for i in l:
         if type(i) == np.ndarray:
-            r.append(np.shape(i))
-        elif type(i) == list:
-            r.append(list_shapes(i))
+            r.append(f(i))
+        elif type(i) == list or type(i) == tuple:
+            r.append(list_aspect(i, f))
 
     return r
+
 
 try:
     main()

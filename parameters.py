@@ -19,20 +19,21 @@ par = {
     'ckpt_save_fn'          : 'model.ckpt',
 
     # Network configuration
-    'n_dendrites'           : 1,
+    'n_dendrites'           : 2,
     'init_weight_sd'        : 0.05,
     'learning_rate'         : 1e-3,
     'num_iterations'        : 100000,
-    'iters_between_eval'    : 20,
+    'iters_between_eval'    : 10,
     'batch_size'            : 1000,
     'n_perms'               : 10,
     'n_pixels'              : 784,
-    'layer_dims'            : [784,120,120,120,120,10],
+    'layer_dims'            : [784,120,121,122,123,10],
     'test_reps'             : 50,
     'constant_b'            : True,
 
     # Omega parameters
     'xi'                    : 0.001,
+    'omega_cost'            : 0.,
 
     # Dropout
     'keep_prob'             : 1

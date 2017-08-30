@@ -63,7 +63,7 @@ class OmegaObject:
     def add_to_w(self, grad, var):
         self.w_k   += np.multiply((self.ref-var), self.grad)
         self.grad   = grad
-        self.ref    = var
+        self.ref    = var if np.sum(var) != 0 else self.ref
 
     def reset_w(self):
         self.w_k    = np.zeros(self.size)
@@ -85,12 +85,15 @@ class OmegaLayer:
     """
 
     def __init__(self, lid, active=0):
-        self.lid    = lid
-        self.size   = [par['layer_dims'][lid+1], par['layer_dims'][lid], par['n_dendrites']]
-        self.active = active
-
-        self.full_omega = 0
+        self.lid        = lid
+        self.active     = active
+        self.full_omega = [0]*par['n_perms']
         self.chron      = 'prev_only'
+
+        if lid != par['n_hidden_layers']:
+            self.size = [par['layer_dims'][lid+1], par['layer_dims'][lid], par['n_dendrites']]
+        else:
+            self.size = [par['layer_dims'][lid+1], par['layer_dims'][lid]]
 
         self.omegas = []
         for p in range(par['n_perms']):
@@ -111,13 +114,10 @@ class OmegaLayer:
     def get_active_perm(self):
         return self.get_perm(self.active)
 
-    def update_active_ref(self, ref):
-        self.get_active_perm.ref = ref
-
     def get_prev_perm_ref(self, pid):
         prev_pid = (pid-1)%par['n_perms']
         if self.chron == 'prev_only' and prev_pid > pid:
-            return 0                        # TODO : Default may not be zero
+            return np.zeros(self.size)         # TODO : Default may not be zero
         else:
             return self.get_perm(prev_pid).ref
 
@@ -138,15 +138,8 @@ class OmegaLayer:
         pid if the temporality is prev_only is true, or calculate for all tasks
         other than the active permutation.
         """
-        for o in self.omegas:
-            if o.pid < self.active:
-                self.full_omega += o.omega
-            elif o.pid == self.active:
-                pass
-            elif o.pid > self.active and self.chron=='all':
-                self.full_omega += o.omega
-            else:
-                pass
+        for p, o in enumerate(self.omegas):
+            self.full_omega[p] += o.omega
 
         return self.full_omega
 
