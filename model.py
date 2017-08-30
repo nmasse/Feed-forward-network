@@ -274,6 +274,18 @@ def list_aspect(l, f):
     return r
 
 
+def calc_DC(o):
+    # DC is a list of arrays each with dimensions [neurons, dendrites, n_perm]
+    # Currently this uses means over synaptic connections instead of max
+    DC = []
+    for layer in range(par['n_hidden_layers']):
+        content = np.zeros([par['layer_dims'][layer+1], par['n_dendrites'], par['n_perms']])
+        for n, d in itertools.product(range(par['layer_dims'][layer+1]), range(par['n_dendrites'])):
+            ind = np.argmin(np.mean(o[layer][:,n,:,d], axis=1))
+            content[n, d, ind] = 1
+        DC.append(content)
+
+
 try:
     main()
 except KeyboardInterrupt:
