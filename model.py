@@ -24,7 +24,7 @@ Model setup and execution
 
 class Model:
 
-    def __init__(self, input_data, target_data, dendrite_clamp, keep_prob):
+    def __init__(self, input_data, target_data, dendrite_clamp, keep_prob, *external):
 
         print('\nBuilding graph...')
 
@@ -34,7 +34,7 @@ class Model:
         self.target_data            = target_data
         self.dendrite_clamp         = dendrite_clamp
         self.keep_prob              = keep_prob             # used for dropout
-        #self.weights, self.omegas   = split_list(external)
+        self.weights, self.omegas   = split_list(external)
 
         # Build the TensorFlow graph
         self.run_model()
@@ -87,17 +87,18 @@ class Model:
     def optimize(self):
 
         # Accumulate omega loss over all available weight matrices
-        """omega_loss = 0
-        for l in range(par['num_layers']):
-            sc = 'layer' + str(l) if not l == (par['num_layers']-1) else 'output'
-            with tf.variable_scope(sc):
-                sq = tf.square(self.weights[l] - tf.get_variable('W'))
+        omega_loss = 0
+        if len(self.weights) != 0:
+            for l in range(par['n_hidden_layers']*par['n_perms']):
+                sc = 'layer' + str(l//par['n_perms']) if not l//par['n_perms'] == (par['num_layers']-1) else 'output'
+                with tf.variable_scope(sc):
+                    sq = tf.square(self.weights[l//par['n_perms']] - tf.get_variable('W'))
 
-            omega_loss += tf.reduce_sum(tf.multiply(self.omegas[l], sq))"""
+                omega_loss += tf.reduce_sum(tf.multiply(self.omegas[l], sq))
 
         # Calculate loss and run optimization
         perf_loss   = tf.reduce_mean(tf.square(self.target_data - self.y))
-        self.loss   = perf_loss + par['omega_cost']
+        self.loss   = perf_loss + par['omega_cost']*omega_loss
 
         opt = tf.train.AdamOptimizer(learning_rate=par['learning_rate'])
         self.grads_and_vars = opt.compute_gradients(self.loss)
@@ -113,12 +114,13 @@ def main():
     y = tf.placeholder(tf.float32, shape=[par['layer_dims'][-1], par['batch_size']]) # target data
     dendrite_clamp = []
     keep_prob = tf.placeholder(tf.float32) # used for dropout
+    ext = make_external_placeholders()
 
     # Open TensorFlow session
     with tf.Session() as sess:
 
         # Generate graph
-        model = Model(x, y, dendrite_clamp, keep_prob)
+        model = Model(x, y, dendrite_clamp, keep_prob, ext)
         init = tf.global_variables_initializer()
         sess.run(init)
         t_start = time.time()
@@ -141,6 +143,9 @@ def main():
         grad_list   = [[]]*par['num_layers']
         var_list    = [[]]*par['num_layers']
 
+        w = []
+        o = []
+
         for i in range(par['num_iterations']):
 
             # Generate batch of N (batch_size X num_batches) trials
@@ -148,11 +153,7 @@ def main():
 
             # Train the model
             _, grads_and_vars, train_loss, model_output = sess.run([model.train_op, model.grads_and_vars, model.loss, model.y], \
-                {x: input_data, y: target_data, keep_prob: par['keep_prob']})
-
-            print(train_loss, '|', list_aspect(grads_and_vars, lambda x : int(np.round(np.sum(1000*x)))))
-            if i == 2:
-                quit()
+                {**{x: input_data, y: target_data, keep_prob: par['keep_prob']}, **zip_to_dict(ext, list(itertools.chain(w, *o)))})
 
             # Separate grads and vars for use in omega calculations
             for k, (g, v) in enumerate(grads_and_vars):
@@ -225,12 +226,6 @@ def main():
                     o.append(layer.calc_full_omega())
 
                     layer.change_active_pid(perm_ind)
-
-                print(list_aspect(w, np.shape))
-                print('')
-                for li in list_aspect(o, np.sum):
-                    print(np.round(li))
-
                 print('Omega calculation complete.\n')
 
 
@@ -256,13 +251,25 @@ def split_list(l):
     return l[:len(l)//2], l[len(l)//2:]
 
 
+def zip_to_dict(g, s):
+    r = {}
+    if len(g) == len(s):
+        for i in range(len(g)):
+            r[g[i]] = s[i]
+    else:
+        #print("Lists in zip_to_dict not same size.", end='\r')
+        pass
+
+    return r
+
+
 def list_aspect(l, f):
     r = []
     for i in l:
-        if type(i) == np.ndarray:
-            r.append(f(i))
-        elif type(i) == list or type(i) == tuple:
+        if type(i) == list or type(i) == tuple:
             r.append(list_aspect(i, f))
+        else:
+            r.append(f(i))
 
     return r
 
@@ -270,4 +277,4 @@ def list_aspect(l, f):
 try:
     main()
 except KeyboardInterrupt:
-    print('Quit by KeyboardInterrupt.')
+    print('\nQuit by KeyboardInterrupt.')
