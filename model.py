@@ -28,11 +28,13 @@ class Model:
 
         print('\nBuilding graph...')
 
-        # Load the input activity, the target data, and the training mask for this batch of trials
-        self.input_data = input_data
-        self.target_data = target_data
-        self.dendrite_clamp = dendrite_clamp
-        self.keep_prob = keep_prob # used for dropout
+        # Load the input activity, the target data, and the training mask for
+        # this batch of trials
+        self.input_data             = input_data
+        self.target_data            = target_data
+        self.dendrite_clamp         = dendrite_clamp
+        self.keep_prob              = keep_prob             # used for dropout
+        #self.weights, self.omegas   = split_list(external)
 
         # Build the TensorFlow graph
         self.run_model()
@@ -84,9 +86,20 @@ class Model:
 
     def optimize(self):
 
+        # Accumulate omega loss over all available weight matrices
+        """omega_loss = 0
+        for l in range(par['num_layers']):
+            sc = 'layer' + str(l) if not l == (par['num_layers']-1) else 'output'
+            with tf.variable_scope(sc):
+                sq = tf.square(self.weights[l] - tf.get_variable('W'))
+
+            omega_loss += tf.reduce_sum(tf.multiply(self.omegas[l], sq))"""
+
         # Calculate loss and run optimization
-        self.loss = tf.reduce_mean(tf.square(self.target_data - self.y))
-        opt = tf.train.AdamOptimizer(learning_rate = par['learning_rate'])
+        perf_loss   = tf.reduce_mean(tf.square(self.target_data - self.y))
+        self.loss   = perf_loss + par['omega_cost']
+
+        opt = tf.train.AdamOptimizer(learning_rate=par['learning_rate'])
         self.grads_and_vars = opt.compute_gradients(self.loss)
         self.train_op = opt.apply_gradients(self.grads_and_vars)
 
@@ -142,14 +155,12 @@ def main():
                 if par['constant_b']:
                     grad_list[k].append(g)
                     var_list[k].append(v)
-                    print(g.shape, v.shape)
                 elif not par['constant_b'] and k%2 == 0:
                     grad_list[k//2].append(g)
                     var_list[k//2].append(v)
-                    print(g.shape, v.shape)
                 else:
                     pass
-                    
+
             # Test model on cross-validated data every 'iters_between_eval' trials
             if i%par['iters_between_eval']==0 and i != 0:
 
@@ -180,8 +191,36 @@ def main():
 
             # If changing tasks, calculate omegas and reset accumulators
             if perm_ind != prev_ind:
+                print('\nRunning omega calculation.\n')
 
-                pass    # Run omega calculation here
+                # This takes the grads and vars from the grad_list and var_list
+                # format and rearranges them to be pairs of grads and vars as
+                # addressed to each layer.  One gvs element will wind up being
+                # a full grads_and_vars as needed by its appropriate OmegaLayer.
+                gvs = []
+                for l in range(par['num_layers']-1):
+                    gl = [k[l] for k in list_shapes(grad_list)]
+                    vl = [k[l] for k in list_shapes(var_list)]
+                    gv = [[g,v] for g, v in zip(gl, vl)]
+                    gvs.append(gv)
+
+                for gv in gvs:
+                    print(gv)
+
+                quit()
+
+
+
+                # Retrieve the appropriate reference weights and omega values
+                # for use in the graph
+                w = [x.get_prev_perm_ref(prev_ind-1) for x in omegas]
+                o = [x.calc_full_omega() for x in omegas]
+
+                print(list_shapes(w))
+                print(list_shapes(o))
+                quit()
+
+                print('\nOmega calculation complete.\n')
 
             prev_ind = perm_ind
 
@@ -200,6 +239,21 @@ def tf_var_print(*var):
     for v in var:
         print(str(v.name).ljust(20), v.shape)
 
+
+def split_list(l):
+    return l[:len(l)//2], l[len(l)//2:]
+
+
+def list_shapes(l):
+    # print([np.shape(i) for i in l])
+    r = []
+    for i in l:
+        if type(i) == np.ndarray:
+            r.append(np.shape(i))
+        elif type(i) == list:
+            r.append(list_shapes(i))
+
+    return r
 
 try:
     main()
