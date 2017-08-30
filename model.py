@@ -151,8 +151,8 @@ def main():
                 {x: input_data, y: target_data, keep_prob: par['keep_prob']})
 
             print(train_loss, '|', list_aspect(grads_and_vars, lambda x : int(np.round(np.sum(1000*x)))))
-            if i == 2:
-                quit()
+            # if i == 2:
+            #     quit()
 
             # Separate grads and vars for use in omega calculations
             for k, (g, v) in enumerate(grads_and_vars):
@@ -226,6 +226,8 @@ def main():
 
                     layer.change_active_pid(perm_ind)
 
+                calc_DC(o)
+
                 print(list_aspect(w, np.shape))
                 print('')
                 for li in list_aspect(o, np.sum):
@@ -265,6 +267,18 @@ def list_aspect(l, f):
             r.append(list_aspect(i, f))
 
     return r
+
+
+def calc_DC(o):
+    # DC is a list of arrays each with dimensions [neurons, dendrites, n_perm]
+    # Currently this uses means over synaptic connections instead of max
+    DC = []
+    for layer in range(par['n_hidden_layers']):
+        content = np.zeros([par['layer_dims'][layer+1], par['n_dendrites'], par['n_perms']])
+        for n, d in itertools.product(range(par['layer_dims'][layer+1]), range(par['n_dendrites'])):
+            ind = np.argmin(np.mean(o[layer][:,n,:,d], axis=1))
+            content[n, d, ind] = 1
+        DC.append(content)
 
 
 try:
