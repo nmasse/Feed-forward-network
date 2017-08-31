@@ -275,28 +275,27 @@ def list_aspect(l, f):
 
 
 def calc_DC(o):
-    # DC is a list of arrays each with dimensions [neurons, dendrites, n_perm]
-    # Currently this uses means over synaptic connections instead of max
+    """
+    Keep whatever version that is desired:
+    1) The first block of code returns indices of the least important dendrites for each neuron
+    2) The second block of code returns a list of [neuron x dendrites]
+       with only the least important dendrite set to 1, aka in a template format
+    """
+    # Version 1)
     DC = []
     for layer in range(par['n_hidden_layers']):
-        content = np.zeros([par['layer_dims'][layer+1], par['n_dendrites'], par['n_perms']])
-        for n, d in itertools.product(range(par['layer_dims'][layer+1]), range(par['n_dendrites'])):
-            ind = np.argmin(np.mean(o[layer][:,n,:,d], axis=1))
-            content[n, d, ind] = 1
-        DC.append(content)
+        DC.append(np.argmin(np.mean(np.max(np.stack(o[layer], axis=3), axis=3), axis=1), axis=1))
+    return DC
 
-    # Version that uses max
+    # Version 2)
     # DC = []
     # for layer in range(par['n_hidden_layers']):
-    #     content = np.zeros([par['layer_dims'][layer+1]])
-        
-
-    #     for n, d in itertools.product(range(par['layer_dims'][layer+1]), range(par['n_dendrites'])):
-    #         mean = np.mean(np.max(o[layer][:,n,:,d], axis=0)))
-
-    #         ind = np.argmin(np.mean(o[layer][:,n,:,d], axis=1))
-    #         content[n, d, ind] = 1
-    #     DC.append(content)
+    #     template = np.zeros([par['layer_dims'][layer+1], par['n_dendrites']])
+    #     ind = np.argmin(np.mean(np.max(np.stack(o[layer], axis=3), axis=3), axis=1), axis=1)
+    #     for n in range(par['layer_dims'][layer+1]):
+    #         template[n, ind[n]] = 1
+    #     DC.append(template)
+    # return DC
 
 
 try:
