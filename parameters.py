@@ -23,10 +23,10 @@ par = {
     # Network configuration
     'n_dendrites'           : 1,
     'init_weight_sd'        : 0.05,
-    'learning_rate'         : 1e-3,
+    'learning_rate'         : 5e-3,
     'num_iterations'        : 100000,
-    'iters_between_eval'    : 30,
-    'batch_size'            : 200,
+    'iters_between_eval'    : 800,
+    'batch_size'            : 128,
     'n_perms'               : 10,
     'n_pixels'              : 784,
     'layer_dims'            : [784,120,121,122,123,10],
@@ -35,7 +35,7 @@ par = {
 
     # Omega parameters
     'xi'                    : 0.001,
-    'omega_cost'            : 1.,
+    'omega_cost'            : 0.1,
 
     # Dropout
     'keep_prob'             : 1
@@ -43,7 +43,9 @@ par = {
 
 
 def make_external_placeholders():
-    shapes = [[par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']] for n in range(par['n_hidden_layers'])]
+
+    """
+    shapes = [[par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']] for n in range(par['n_hidden_layers']-1)]
     shapes.append([par['layer_dims'][par['n_hidden_layers']+1], par['layer_dims'][par['n_hidden_layers']]])
 
     feed = []
@@ -53,6 +55,20 @@ def make_external_placeholders():
 
     externals = [tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s) for s in feed]
     return externals
+    """
+
+
+    shapes = [[par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']] for n in range(par['n_hidden_layers'])]
+    shapes.append([par['layer_dims'][-1], par['layer_dims'][-2]])
+
+    feed = []
+    for s in shapes:
+        feed += [s]
+
+    anchor_weights_placeholder = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s) for m in range(par['n_perms'])] for s in feed]
+    omegas_placeholder  = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s) for m in range(par['n_perms'])] for s in feed]
+
+    return anchor_weights_placeholder, omegas_placeholder
 
 
 def update_dependencies():
