@@ -312,7 +312,6 @@ def calc_DC(o):
     # Version 2)
     # DC = []
     # for layer in range(par['n_hidden_layers']):
-<<<<<<< HEAD
     #     content = np.zeros([par['layer_dims'][layer+1]])
 
 
@@ -322,14 +321,6 @@ def calc_DC(o):
     #         ind = np.argmin(np.mean(o[layer][:,n,:,d], axis=1))
     #         content[n, d, ind] = 1
     #     DC.append(content)
-=======
-    #     template = np.zeros([par['layer_dims'][layer+1], par['n_dendrites']])
-    #     ind = np.argmin(np.mean(np.max(np.stack(o[layer], axis=3), axis=3), axis=1), axis=1)
-    #     for n in range(par['layer_dims'][layer+1]):
-    #         template[n, ind[n]] = 1
-    #     DC.append(template)
-    # return DC
->>>>>>> 64e1ba4ffd4656034f0fac164234af1733d05168
 
 
 try:
