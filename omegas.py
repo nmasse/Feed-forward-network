@@ -152,6 +152,9 @@ class OmegaLayer:
         for gv in grads_and_vars:
             self.add_to_w(*gv)
         self.add_to_w(grads_and_vars[-1][0], 0.)     # This line is important!
+                                                     # It ekes out the last w_k
+                                                     # from the buffer in each
+                                                     # OmegaObject instance
 
         self.full_omega = self.calc_full_omega()
         self.reset_w()
