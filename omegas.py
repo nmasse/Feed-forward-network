@@ -161,7 +161,72 @@ class OmegaLayer:
 
         return self.full_omega
 
+###########################
+### Interface Functions ###
+###########################
 
 @np.vectorize
 def create_omega_layer(l):
+    """
+    Create an omega layer (or numpy array thereof)
+    """
     return OmegaLayer(l)
+
+
+def init_gv_list(n):
+    """
+    Initialize a grad_list or var_list with the proper dimensions
+    """
+    return [[]]*n
+
+
+def sep_gv(grad_list, var_list, grads_and_vars):
+    """
+    Update the existing grad_list and var_list with the grads_and_vars
+    just retrieved from a TensorFlow session
+    """
+    for k, (g, v) in enumerate(grads_and_vars):
+        if par['constant_b']:
+            grad_list[k].append(g)
+            var_list[k].append(v)
+        elif not par['constant_b'] and k%2 == 0:
+            grad_list[k//2].append(g)
+            var_list[k//2].append(v)
+        else:
+            pass
+
+    return grad_list, var_list
+
+
+def gen_gvs(grad_list, var_list):
+    """
+    Return an OmegaLayer-compatibile grads_and_vars based on an existing
+    grad_list and var_list pair
+    """
+    gvs = []
+    for l in range(par['num_layers']-1):
+        gl = [k[l] for k in grad_list]
+        vl = [k[l] for k in var_list]
+        gv = [[g,v] for g, v in zip(gl, vl)]
+        gvs.append(gv)
+    return gvs
+
+
+def run_omegas_iteration(omegas, gvs, new_pid):
+    """
+    Using a numpy array of omegas and an OmegaLayer-compatibile
+    grads_and_vars, run each OmegaLayer's iteration based on the
+    appropriate grad and var set, update each layer to the new pid,
+    and return lists of reference weights and omega values.
+    """
+    w = []
+    o = []
+    for layer, gv in zip(omegas, gvs):
+        layer.process_iteration(gv)
+
+        w.append([layer.get_prev_perm_ref(m) for m in range(par['n_perms'])])
+        o.append(layer.calc_full_omega())
+
+        layer.change_active_pid(new_pid)
+
+    return w, o

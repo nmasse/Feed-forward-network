@@ -43,32 +43,13 @@ par = {
 
 
 def make_external_placeholders():
+    feed = [[par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']] for n in range(par['n_hidden_layers'])]
+    feed.append([par['layer_dims'][-1], par['layer_dims'][-2]])
 
-    """
-    shapes = [[par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']] for n in range(par['n_hidden_layers']-1)]
-    shapes.append([par['layer_dims'][par['n_hidden_layers']+1], par['layer_dims'][par['n_hidden_layers']]])
+    plc_weights = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s)]*par['n_perms'] for s in feed]
+    plc_omegas  = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s)]*par['n_perms'] for s in feed]
 
-    feed = []
-    for s in shapes:
-        feed += [s]*par['n_perms']
-    feed = shapes + feed
-
-    externals = [tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s) for s in feed]
-    return externals
-    """
-
-
-    shapes = [[par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']] for n in range(par['n_hidden_layers'])]
-    shapes.append([par['layer_dims'][-1], par['layer_dims'][-2]])
-
-    feed = []
-    for s in shapes:
-        feed += [s]
-
-    anchor_weights_placeholder = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s) for m in range(par['n_perms'])] for s in feed]
-    omegas_placeholder  = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s) for m in range(par['n_perms'])] for s in feed]
-
-    return anchor_weights_placeholder, omegas_placeholder
+    return plc_weights, plc_omegas
 
 
 def update_dependencies():
