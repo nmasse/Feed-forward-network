@@ -21,12 +21,13 @@ par = {
     'ckpt_save_fn'          : 'model.ckpt',
 
     # Network configuration
+    'optimizer'             : 'MSE',           # MSE or cross_entropy
     'n_dendrites'           : 1,
     'init_weight_sd'        : 0.05,
     'learning_rate'         : 5e-3,
     'num_iterations'        : 100000,
-    'iters_between_eval'    : 800,
-    'batch_size'            : 128,
+    'iters_between_eval'    : 100,
+    'batch_size'            : 150,
     'n_perms'               : 10,
     'n_pixels'              : 784,
     'layer_dims'            : [784,120,121,122,123,10],

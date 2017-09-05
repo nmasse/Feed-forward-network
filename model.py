@@ -95,15 +95,17 @@ class Model:
             with tf.variable_scope(sc, reuse = True):
                 omega_loss += tf.reduce_sum(self.omegas[layer][p]*tf.square(self.ref_weights[layer][p] - tf.get_variable('W')))
 
-
         # Calculate loss and run optimization
-        perf_loss   = tf.reduce_mean(tf.square(self.target_data - self.y))
-        #perf_loss   = tf.reduce_mean(tf.square(self.target_data - self.y))
-        perf_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = self.y, labels = self.target_data, dim=0))
+        if par['optimizer'] == 'MSE':
+            perf_loss = tf.reduce_mean(tf.square(self.target_data - self.y))
+        elif par['optimizer'] == 'cross_entropy':
+            perf_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = self.y, labels = self.target_data, dim=0))
 
+        # Aggregate total loss
         self.omega_loss = par['omega_cost']*omega_loss
         self.loss   = perf_loss + self.omega_loss
 
+        # Create optimizer operation
         opt = tf.train.AdamOptimizer(learning_rate=par['learning_rate'])
         self.grads_and_vars = opt.compute_gradients(self.loss)
         self.train_op = opt.apply_gradients(self.grads_and_vars)
