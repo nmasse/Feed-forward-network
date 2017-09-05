@@ -141,16 +141,16 @@ def main():
         train_performance = {'loss': [], 'trial': [], 'time': []}
         test_performance = {'loss': [], 'trial': [], 'time': []}
 
-        perm_ind    = 0
-        prev_ind    = 0
-
-        # Generate OmegaLayers and associated items
+        # Generate OmegaLayers, associated items, and permutation indices
         omegas      = reg.create_omega_layer(np.arange(par['num_layers']-1))
         grad_list   = reg.init_gv_list(par['num_layers'])
         var_list    = reg.init_gv_list(par['num_layers'])
         w = []
         o = []
+        perm_ind    = 0
+        prev_ind    = 0
 
+        # Run model over its iterations
         for i in range(par['num_iterations']):
 
             # Generate batch of N (batch_size X num_batches) trials
