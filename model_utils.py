@@ -21,6 +21,21 @@ def tf_var_print(*var):
         print(str(v.name).ljust(20), v.shape)
 
 
+def sum_of_list(l):
+    acc = 0.
+    for i in l:
+        if type(i) == tuple or type(i) == list:
+            acc += sum_of_list(i)
+        else:
+            acc += np.sum(i)
+    return acc
+
+
+def feed_dict_print(d):
+    for name, item in d.items():
+        print(str(name.name).ljust(30), str(name.shape).ljust(15), np.sum(item))
+
+
 def split_list(l):
     return l[:len(l)//2], l[len(l)//2:]
 

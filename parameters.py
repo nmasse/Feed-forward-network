@@ -26,9 +26,9 @@ par = {
     'init_weight_sd'        : 0.05,
     'learning_rate'         : 5e-3,
     'num_iterations'        : 100000,
-    'iters_between_eval'    : 100,
-    'batch_size'            : 150,
-    'n_perms'               : 10,
+    'iters_between_eval'    : 50,
+    'batch_size'            : 100,
+    'n_perms'               : 3,
     'n_pixels'              : 784,
     'layer_dims'            : [784,120,121,122,123,10],
     'test_reps'             : 50,
@@ -36,7 +36,7 @@ par = {
 
     # Omega parameters
     'xi'                    : 0.001,
-    'omega_cost'            : 0.1,
+    'omega_cost'            : 1.,
 
     # Dropout
     'keep_prob'             : 1
@@ -47,8 +47,8 @@ def make_external_placeholders():
     feed = [[par['layer_dims'][n+1], par['layer_dims'][n], par['n_dendrites']] for n in range(par['n_hidden_layers'])]
     feed.append([par['layer_dims'][-1], par['layer_dims'][-2]])
 
-    plc_weights = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s)]*par['n_perms'] for s in feed]
-    plc_omegas  = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s)]*par['n_perms'] for s in feed]
+    plc_weights = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s) for i in range(par['n_perms'])] for s in feed]
+    plc_omegas  = [[tf.placeholder_with_default(np.zeros(s, dtype=np.float32), shape=s) for i in range(par['n_perms'])] for s in feed]
 
     return plc_weights, plc_omegas
 

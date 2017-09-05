@@ -89,21 +89,21 @@ class Model:
     def optimize(self):
 
         # Accumulate omega loss over all available weight matrices
-        omega_loss = 0
+        omega_loss = tf.constant(0.)
         for layer, p in itertools.product(range(par['n_hidden_layers']+1), range(par['n_perms'])):
             sc = 'layer' + str(layer) if not layer == par['n_hidden_layers'] else 'output'
-            with tf.variable_scope(sc, reuse = True):
+            with tf.variable_scope(sc, reuse=True):
                 omega_loss += tf.reduce_sum(self.omegas[layer][p]*tf.square(self.ref_weights[layer][p] - tf.get_variable('W')))
 
         # Calculate loss and run optimization
         if par['optimizer'] == 'MSE':
-            perf_loss = tf.reduce_mean(tf.square(self.target_data - self.y))
+            self.perf_loss = tf.reduce_mean(tf.square(self.target_data - self.y))
         elif par['optimizer'] == 'cross_entropy':
-            perf_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = self.y, labels = self.target_data, dim=0))
+            self.perf_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = self.y, labels = self.target_data, dim=0))
 
         # Aggregate total loss
         self.omega_loss = par['omega_cost']*omega_loss
-        self.loss   = perf_loss + self.omega_loss
+        self.loss       = self.perf_loss + self.omega_loss
 
         # Create optimizer operation
         opt = tf.train.AdamOptimizer(learning_rate=par['learning_rate'])
@@ -151,8 +151,6 @@ def main():
         w = []
         o = []
 
-        task_switch = False
-
         for i in range(par['num_iterations']):
 
             # Generate batch of N (batch_size X num_batches) trials
@@ -161,13 +159,15 @@ def main():
 
             # Define the feed dict
             feed_dict = {**{x: input_data, y: target_data, keep_prob: par['keep_prob']}, \
-                         **mu.zip_to_dict(plc_weights, list(w)),
-                         **mu.zip_to_dict(plc_omegas, list(o))}
+                         **mu.zip_to_dict(plc_weights, w),
+                         **mu.zip_to_dict(plc_omegas, o)}
 
             # Train the model
             _, grads_and_vars, train_loss, model_output, omega_loss = \
-                sess.run([model.train_op, model.grads_and_vars, model.loss, \
+                sess.run([model.train_op, model.grads_and_vars, model.perf_loss, \
                           model.y, model.omega_loss], feed_dict)
+
+            print(str(np.round(train_loss, 4)).ljust(8), str(np.round(omega_loss, 4)).ljust(8), end='\r')
 
             # Separate grads and vars for use in omega calculations
             grad_list, var_list = reg.sep_gv(grad_list, var_list, grads_and_vars)
@@ -202,7 +202,6 @@ def main():
 
             # If changing tasks, calculate omegas and reset accumulators
             if perm_ind != prev_ind:
-                task_switch = True
                 print('\nRunning omega calculation.')
 
                 # This takes the grads and vars from the grad_list and var_list
