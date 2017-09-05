@@ -220,6 +220,9 @@ def main():
                 # values, and then change the active permutation
                 w, o = reg.run_omegas_iteration(omegas, gvs, perm_ind)
 
+                for line in mu.list_aspect(o, np.sum):
+                    print(np.round(line,4))
+
                 print('Omega calculation complete.\n')
 
             prev_ind = perm_ind

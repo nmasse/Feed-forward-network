@@ -122,7 +122,7 @@ class OmegaLayer:
             return self.get_perm(prev_pid).ref
 
     def add_to_w(self, grad, var):
-        active = self.get_active_perm()
+        active   = self.get_active_perm()
         prev_ref = self.get_prev_perm_ref(self.active)
 
         active.add_to_w(grad, var)
