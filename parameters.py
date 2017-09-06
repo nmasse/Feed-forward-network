@@ -26,11 +26,11 @@ par = {
     'init_weight_sd'        : 0.05,
     'learning_rate'         : 5e-3,
     'num_iterations'        : 100000,
-    'iters_between_eval'    : 250,
+    'iters_between_eval'    : 150,
     'batch_size'            : 100,
     'n_perms'               : 10,
     'n_pixels'              : 784,
-    'layer_dims'            : [784,120,120,120,120,10],
+    'layer_dims'            : [784,180,180,180,180,10],
     'test_reps'             : 50,
     'constant_b'            : True,
 
@@ -39,7 +39,7 @@ par = {
     'omega_cost'            : 1.,
 
     # Dropout
-    'keep_prob'             : 1
+    'keep_prob'             : 1.
     }
 
 
