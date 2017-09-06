@@ -152,7 +152,7 @@ class OmegaLayer:
         other than the active permutation.
         """
         for p, o in enumerate(self.omegas):
-            self.full_omega[p] += o.omega
+            self.full_omega[p] = o.omega
 
         return self.full_omega
 
