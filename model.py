@@ -141,12 +141,10 @@ def main():
         train_performance = {'loss': [], 'trial': [], 'time': []}
         test_performance = {'loss': [], 'trial': [], 'time': []}
 
-        # Generate OmegaLayers, associated items, and permutation indices
-        omegas      = reg.create_omega_layer(np.arange(par['num_layers']-1))
-        grad_list   = reg.init_gv_list(par['num_layers'])
-        var_list    = reg.init_gv_list(par['num_layers'])
-        w = []
-        o = []
+        # Generate OmegaLayers, associated lists, and permutation indices
+        interface   = reg.OmegaInterface(par['num_layers']-1)
+        w           = []
+        o           = []
         perm_ind    = 0
         prev_ind    = 0
 
@@ -167,10 +165,10 @@ def main():
                 sess.run([model.train_op, model.grads_and_vars, model.perf_loss, \
                           model.y, model.omega_loss], feed_dict)
 
-            print(str(np.round(train_loss, 4)).ljust(8), str(np.round(omega_loss, 4)).ljust(8), end='\r')
+            # Send the new grads and vars to the omegas for later use
+            interface.accumulate_gvs(grads_and_vars)
 
-            # Separate grads and vars for use in omega calculations
-            grad_list, var_list = reg.sep_gv(grad_list, var_list, grads_and_vars)
+            print(str(np.round(train_loss, 4)).ljust(8), str(np.round(omega_loss, 4)).ljust(8), end='\r')
 
             # Test model on cross-validated data every 'iters_between_eval' trials
             if i%par['iters_between_eval']==0 and i != 0:
@@ -204,23 +202,19 @@ def main():
             if perm_ind != prev_ind:
                 print('\nRunning omega calculation.')
 
-                # This takes the grads and vars from the grad_list and var_list
-                # format and rearranges them to be pairs of grads and vars as
-                # addressed to each layer.  One gvs element will wind up being
-                # a full grads_and_vars as needed by its appropriate OmegaLayer.
-                gvs = reg.gen_gvs(grad_list, var_list)
+                interface.order_gvs()
+                w, o = interface.run_iteration(perm_ind)
 
-                # The grad and var lists are reset in preparation for the next
-                # sequence of updates
-                grad_list   = reg.init_gv_list(par['num_layers'])
-                var_list    = reg.init_gv_list(par['num_layers'])
+                print('')
+                for line in mu.list_aspect(o, np.mean):
+                    print(np.round(line,4))
 
-                # Iterate over the OmegaLayers and the gvs list to process
-                # each layer, get the appropriate reference weights and omega
-                # values, and then change the active permutation
-                w, o = reg.run_omegas_iteration(omegas, gvs, perm_ind)
+                print('')
+                for line in mu.list_aspect(o, np.min):
+                    print(np.round(line,4))
 
-                for line in mu.list_aspect(o, np.sum):
+                print('')
+                for line in mu.list_aspect(o, np.max):
                     print(np.round(line,4))
 
                 print('Omega calculation complete.\n')

@@ -151,7 +151,7 @@ class OmegaLayer:
         # Apply all grads and vars to w_k (inc. last grad!)
         for gv in grads_and_vars:
             self.add_to_w(*gv)
-        self.add_to_w(grads_and_vars[-1][0], 0.)     # This line is important!
+        #self.add_to_w(grads_and_vars[-1][0], 0.)     # This line is important!
                                                      # It ekes out the last w_k
                                                      # from the buffer in each
                                                      # OmegaObject instance
@@ -161,72 +161,48 @@ class OmegaLayer:
 
         return self.full_omega
 
-###########################
-### Interface Functions ###
-###########################
 
-@np.vectorize
-def create_omega_layer(l):
-    """
-    Create an omega layer (or numpy array thereof)
-    """
-    return OmegaLayer(l)
+class OmegaInterface:
 
+    def __init__(self, num_layers):
+        initialize  = np.vectorize(lambda l : OmegaLayer(l))
+        self.omegas = initialize(np.arange(num_layers))
 
-def init_gv_list(n):
-    """
-    Initialize a grad_list or var_list with the proper dimensions
-    """
-    return [[]]*n
+        self.gvs    = []
+        self.gvs_or = np.array([])
 
+        self.ref_w  = []
+        self.ref_o  = []
 
-def sep_gv(grad_list, var_list, grads_and_vars):
-    """
-    Update the existing grad_list and var_list with the grads_and_vars
-    just retrieved from a TensorFlow session
-    """
-    for k, (g, v) in enumerate(grads_and_vars):
-        if par['constant_b']:
-            grad_list[k].append(g)
-            var_list[k].append(v)
-        elif not par['constant_b'] and k%2 == 0:
-            grad_list[k//2].append(g)
-            var_list[k//2].append(v)
-        else:
-            pass
+    def reset_gvs(self):
+        self.gvs    = []
 
-    return grad_list, var_list
+    def accumulate_gvs(self, new_gvs):
+        self.gvs.append(new_gvs)
 
+    def order_gvs(self):
+        # self.gvs_or is of the shape [layer x batch x [grad, var]]
+        m = np.array(self.gvs, dtype=np.ndarray)
+        self.gvs_or = np.transpose(m, [1,0,2])
 
-def gen_gvs(grad_list, var_list):
-    """
-    Return an OmegaLayer-compatibile grads_and_vars based on an existing
-    grad_list and var_list pair
-    """
-    gvs = []
-    for l in range(par['num_layers']-1):
-        gl = [k[l] for k in grad_list]
-        vl = [k[l] for k in var_list]
-        gv = [[g,v] for g, v in zip(gl, vl)]
-        gvs.append(gv)
-    return gvs
+    def run_iteration(self, new_pid):
+        """
+        Using a numpy array of omegas and an OmegaLayer-compatibile
+        grads_and_vars, run each OmegaLayer's iteration based on the
+        appropriate grad and var set, update each layer to the new pid,
+        and return lists of reference weights and omega values.
+        """
+        self.ref_w = []
+        self.ref_o = []
+        for layer, gv in zip(self.omegas, self.gvs_or):
 
+            layer.process_iteration(gv)
 
-def run_omegas_iteration(omegas, gvs, new_pid):
-    """
-    Using a numpy array of omegas and an OmegaLayer-compatibile
-    grads_and_vars, run each OmegaLayer's iteration based on the
-    appropriate grad and var set, update each layer to the new pid,
-    and return lists of reference weights and omega values.
-    """
-    w = []
-    o = []
-    for layer, gv in zip(omegas, gvs):
-        layer.process_iteration(gv)
+            self.ref_w.append([layer.get_prev_perm_ref(m) for m in range(par['n_perms'])])
+            self.ref_o.append(layer.calc_full_omega())
 
-        w.append([layer.get_prev_perm_ref(m) for m in range(par['n_perms'])])
-        o.append(layer.calc_full_omega())
+            layer.change_active_pid(new_pid)
 
-        layer.change_active_pid(new_pid)
+        self.reset_gvs()
 
-    return w, o
+        return self.ref_w, self.ref_o
