@@ -62,6 +62,12 @@ class OmegaObject:
 
     def add_to_w(self, grad, var):
         self.w_k   += np.multiply((self.ref-var), self.grad)
+
+        # w_k min is on the order of -e-6, and w_k max is on the order of e-3
+        # w_k sum is on the order of 5e-2 -- should below-zero values be
+        # clipped?  Still, though, why are they even there?
+        self.w_k    = np.maximum(0., self.w_k)
+
         self.grad   = grad
         self.ref    = var if np.sum(var) != 0 else self.ref
 
@@ -114,6 +120,13 @@ class OmegaLayer:
     def get_active_perm(self):
         return self.get_perm(self.active)
 
+    def get_perm_ref(self, pid):
+        prev_pid = pid%par['n_perms']
+        if self.chron == 'prev_only' and prev_pid > pid:
+            return np.zeros(self.size)         # TODO : Default may not be zero
+        else:
+            return self.get_perm(prev_pid).ref
+
     def get_prev_perm_ref(self, pid):
         prev_pid = (pid-1)%par['n_perms']
         if self.chron == 'prev_only' and prev_pid > pid:
@@ -151,13 +164,13 @@ class OmegaLayer:
         # Apply all grads and vars to w_k (inc. last grad!)
         for gv in grads_and_vars:
             self.add_to_w(*gv)
-        self.add_to_w(grads_and_vars[-1][0], 0.)     # This line is important!
+        #self.add_to_w(grads_and_vars[-1][0], 0.)     # This line is important!
                                                      # It ekes out the last w_k
                                                      # from the buffer in each
                                                      # OmegaObject instance
-
-        self.full_omega = self.calc_full_omega()
         self.reset_w()
+        self.full_omega = self.calc_full_omega()
+
 
         return self.full_omega
 
@@ -198,7 +211,7 @@ class OmegaInterface:
 
             layer.process_iteration(gv)
 
-            self.ref_w.append([layer.get_prev_perm_ref(m) for m in range(par['n_perms'])])
+            self.ref_w.append([layer.get_perm_ref(m) for m in range(par['n_perms'])])
             self.ref_o.append(layer.calc_full_omega())
 
             layer.change_active_pid(new_pid)
