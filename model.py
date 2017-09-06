@@ -168,7 +168,7 @@ def main():
             # Send the new grads and vars to the omegas for later use
             interface.accumulate_gvs(grads_and_vars)
 
-            print(str(np.round(train_loss, 4)).ljust(8), str(np.round(omega_loss, 4)).ljust(8), end='\r')
+            #print(str(np.round(train_loss, 4)).ljust(8), str(np.round(omega_loss, 4)).ljust(8), end='\r')
 
             # Test model on cross-validated data every 'iters_between_eval' trials
             if i%par['iters_between_eval']==0 and i != 0:
