@@ -151,7 +151,7 @@ class OmegaLayer:
         # Apply all grads and vars to w_k (inc. last grad!)
         for gv in grads_and_vars:
             self.add_to_w(*gv)
-        #self.add_to_w(grads_and_vars[-1][0], 0.)     # This line is important!
+        self.add_to_w(grads_and_vars[-1][0], 0.)     # This line is important!
                                                      # It ekes out the last w_k
                                                      # from the buffer in each
                                                      # OmegaObject instance

@@ -205,18 +205,6 @@ def main():
                 interface.order_gvs()
                 w, o = interface.run_iteration(perm_ind)
 
-                print('')
-                for line in mu.list_aspect(o, np.mean):
-                    print(np.round(line,4))
-
-                print('')
-                for line in mu.list_aspect(o, np.min):
-                    print(np.round(line,4))
-
-                print('')
-                for line in mu.list_aspect(o, np.max):
-                    print(np.round(line,4))
-
                 print('Omega calculation complete.\n')
 
             prev_ind = perm_ind
