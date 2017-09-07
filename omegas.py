@@ -219,3 +219,29 @@ class OmegaInterface:
         self.reset_gvs()
 
         return self.ref_w, self.ref_o
+
+    def calc_DC_matrix(self):
+        """
+        Keep whatever version that is desired:
+        1) The first block of code returns indices of the least important dendrites for each neuron
+        2) The second block of code returns a list of [neuron x dendrites]
+           with only the least important dendrite set to 1, aka in a template format
+        """
+        # Version 1)
+        DC = []
+        for layer in range(par['n_hidden_layers']):
+            DC.append(np.argmin(np.mean(np.max(np.stack(self.ref_o[layer], axis=3), axis=3), axis=1), axis=1))
+        return DC
+
+        # Version 2)
+        # DC = []
+        # for layer in range(par['n_hidden_layers']):
+        #     content = np.zeros([par['layer_dims'][layer+1]])
+
+
+        #     for n, d in itertools.product(range(par['layer_dims'][layer+1]), range(par['n_dendrites'])):
+        #         mean = np.mean(np.max(self.ref_o[layer][:,n,:,d], axis=0)))
+
+        #         ind = np.argmin(np.mean(self.ref_o[layer][:,n,:,d], axis=1))
+        #         content[n, d, ind] = 1
+        #     DC.append(content)
