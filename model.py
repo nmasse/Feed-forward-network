@@ -202,7 +202,6 @@ def main():
             if perm_ind != prev_ind:
                 print('\nRunning omega calculation.')
 
-                interface.order_gvs()
                 w, o = interface.run_iteration(perm_ind)
 
                 print('Omega calculation complete.\n')

@@ -205,6 +205,9 @@ class OmegaInterface:
         appropriate grad and var set, update each layer to the new pid,
         and return lists of reference weights and omega values.
         """
+
+        self.order_gvs()
+
         self.ref_w = []
         self.ref_o = []
         for layer, gv in zip(self.omegas, self.gvs_or):
