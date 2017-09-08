@@ -4,7 +4,7 @@ from parameters import *
 import time
 
 def update_pid(i):
-    return (i//(2*par['iters_between_eval']))%par['n_perms']
+    return (i//(par['iters_between_eval']))%par['n_perms']
 
 def print_results(i, acc, loss, t_start, perm_ind):
 
