@@ -61,11 +61,11 @@ class Model:
 
                 # Run layer calculations
                 x0 = tf.tensordot(W, self.x, ([1],[0]))
-                #x1 = tf.nn.relu(x0 - self.dendrite_clamp)
                 x1 = tf.nn.relu(x0)
+                #x1 = tf.nn.relu(x0 - self.dendrite_clamp)
 
                 # Print layer variables and run final layer calculation
-                self.x = tf.reduce_sum(x1,axis = 1) + b
+                self.x = tf.reduce_sum(x1, axis=1) + b
                 mu.tf_var_print(self.x, W, x0, x1)
 
                 # Apply dropout right before final layer
