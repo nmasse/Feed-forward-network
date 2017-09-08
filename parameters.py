@@ -24,9 +24,9 @@ par = {
     'optimizer'             : 'MSE',           # MSE or cross_entropy
     'n_dendrites'           : 1,
     'init_weight_sd'        : 0.05,
-    'learning_rate'         : 5e-3,
+    'learning_rate'         : 1e-3,
     'num_iterations'        : 100000,
-    'iters_between_eval'    : 150,
+    'iters_between_eval'    : 300,
     'batch_size'            : 100,
     'n_perms'               : 10,
     'n_pixels'              : 784,
@@ -35,8 +35,8 @@ par = {
     'constant_b'            : True,
 
     # Omega parameters
-    'xi'                    : 0.001,
-    'omega_cost'            : 1.,
+    'xi'                    : 0.1,
+    'omega_cost'            : 0.1,
 
     # Dropout
     'keep_prob'             : 1.
