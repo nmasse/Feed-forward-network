@@ -1,6 +1,5 @@
 """
-Nicolas Masse 2017
-
+Nicolas Masse, Gregory Grant 2017
 """
 
 import tensorflow as tf
@@ -52,7 +51,7 @@ class Model:
         self.x = self.input_data
 
         # Re-bind the chosen initialization functions
-        w_init = tf.random_normal_initializer(0, par['init_weight_sd']))
+        w_init = tf.random_normal_initializer(0, par['init_weight_sd'])
         b_init = tf.constant_initializer(0)
 
         # Iterate through the model's hidden layers
@@ -83,7 +82,7 @@ class Model:
             print('\n-- Output --')
 
             # Establish layer shape
-            w_shape = [par['layer_dims'][par['num_layers']-1], par['layer_dims'][par['num_layers']-2]
+            w_shape = [par['layer_dims'][par['num_layers']-1], par['layer_dims'][par['num_layers']-2]]
             b_shape = [par['layer_dims'][n+1], 1]
 
             # Get layer variables
