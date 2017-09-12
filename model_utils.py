@@ -4,7 +4,7 @@ from parameters import *
 import time
 
 def update_pid(i):
-    return (i//(par['iters_between_eval']))%par['n_perms']
+    return (i//(2*par['iters_between_eval']))%par['n_perms']
 
 def print_results(i, acc, loss, t_start, perm_ind):
 
@@ -14,6 +14,7 @@ def print_results(i, acc, loss, t_start, perm_ind):
     for p in range(np.shape(acc)[0]):
         line = '{:4d} | '.format(p) + '{:0.4f}  | '.format(acc[p]) + '{:0.4f}'.format(loss[p])
         print(line, '<---' if p == perm_ind else '')
+    print('')
 
 
 def tf_var_print(*var):
