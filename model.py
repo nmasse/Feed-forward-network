@@ -50,9 +50,12 @@ class Model:
         # Establish current tracked state, starting with the input activity
         self.x = self.input_data
 
-        # Re-bind the chosen initialization functions
-        w_init = tf.random_normal_initializer(0, par['init_weight_sd'])
-        b_init = tf.constant_initializer(0)
+        # Re-bind the chosen initialization functions and arguments
+        w_init = tf.random_normal_initializer
+        w_data = [0, par['init_weight_sd']]
+
+        b_init = tf.constant_initializer
+        b_data = [0]
 
         # Iterate through the model's hidden layers
         for n in range(par['n_hidden_layers']):
@@ -64,13 +67,11 @@ class Model:
                 b_shape = [par['layer_dims'][n+1], 1]
 
                 # Get layer variables
-                W = tf.get_variable('W', w_shape, initializer=w_init)
-                b = tf.get_variable('b', b_shape, initializer=b_init)
-                if par['constant_b']:
-                    b = tf.constant(0.)
+                W = tf.get_variable('W', w_shape, initializer=w_init(*w_data))
+                b = tf.get_variable('b', b_shape, initializer=b_init(*b_data), trainable=par['train_b'])
 
                 # Run layer calculations
-                x0      = tf.tensordot(W, self.x ([1],[0]))
+                x0      = tf.tensordot(W, self.x, ([1],[0]))
                 x1      = tf.reduce_sum(x0, axis=1) + b
                 self.x  = tf.nn.relu(x1)
 
@@ -83,13 +84,11 @@ class Model:
 
             # Establish layer shape
             w_shape = [par['layer_dims'][par['num_layers']-1], par['layer_dims'][par['num_layers']-2]]
-            b_shape = [par['layer_dims'][n+1], 1]
+            b_shape = [par['layer_dims'][-1], 1]
 
             # Get layer variables
-            W = tf.get_variable('W', w_shape, initializer=w_init)
-            b = tf.get_variable('b', b_shape, initializer=b_init)
-            if par['constant_b']:
-                b = tf.constant(0.)
+            W = tf.get_variable('W', w_shape, initializer=w_init(*w_data))
+            b = tf.get_variable('b', b_shape, initializer=b_init(*b_data), trainable=par['train_b'])
 
             # Run layer calculations
             y0      = tf.matmul(W, self.x) + b
@@ -102,27 +101,27 @@ class Model:
     def optimize(self):
 
         # Accumulate omega loss
-        self.omega_loss = tf.constant(0.)
+        omega_loss = tf.constant(0.)
         for layer, p in itertools.product(range(par['num_layers']-1), range(par['n_perms'])):
             sc = 'layer' + str(layer) if not layer == par['n_hidden_layers'] else 'output'
-            with tf.variable_Scope(sc, reuse=True):
+            with tf.variable_scope(sc, reuse=True):
                 sq = tf.square(self.ref_weights[layer][p] - tf.get_variable('W'))
                 om = tf.multiply(self.omegas[layer][p], sq)
-                self.omega_loss += tf.reduce_sum(om)
+                omega_loss += tf.reduce_sum(om)
 
         # Calculate performance loss
         if par['optimizer'] == 'MSE':
-            self.perf_loss = tf.square(self.target_data - self.y)
+            perf_loss = tf.square(self.target_data - self.y)
         elif par['optimizer'] == 'cross_entropy':
             setup = {'logits' : self.y, 'labels' : self.target_data, 'dim' : 0}
-            self.perf_loss = tf.nn.softmax_cross_entropy_with_logits(**setup)
+            perf_loss = tf.nn.softmax_cross_entropy_with_logits(**setup)
 
         # Aggregate total loss
-        self.perf_loss  = tf.reduce_mean(self.perf_loss)
-        self.omega_loss = tf.constant(par['omega_cost'])*self.omega_loss
+        self.perf_loss  = tf.reduce_mean(perf_loss)
+        self.omega_loss = par['omega_cost']*omega_loss
         self.loss       = self.perf_loss + self.omega_loss
 
-        # Create optimizer operation
+        # Calculate gradients and create optimizer operation
         opt = tf.train.AdamOptimizer(learning_rate=par['learning_rate'])
         self.grads_and_vars = opt.compute_gradients(self.perf_loss)
         self.grads_and_vars_plus = opt.compute_gradients(self.loss)

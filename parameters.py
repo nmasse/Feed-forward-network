@@ -26,13 +26,13 @@ par = {
     'init_weight_sd'        : 0.05,
     'learning_rate'         : 1e-3,
     'num_iterations'        : 100000,
-    'iters_between_eval'    : 300,
+    'iters_between_eval'    : 500,
     'batch_size'            : 100,
     'n_perms'               : 10,
     'n_pixels'              : 784,
-    'layer_dims'            : [784,180,180,180,180,10],
-    'test_reps'             : 50,
-    'constant_b'            : True,
+    'layer_dims'            : [784,400,400,10],
+    'test_reps'             : 20,
+    'train_b'               : False,
 
     # Omega parameters
     'xi'                    : 0.1,
